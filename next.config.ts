@@ -21,6 +21,17 @@ const withPWA = require("next-pwa")({
       },
     },
     {
+      urlPattern: /^https:\/\/api\.openrouteservice\.org\/.*/i,
+      handler: "NetworkFirst",
+      options: {
+        cacheName: "openrouteservice-api",
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 60 * 60, // 1 hour
+        },
+      },
+    },
+    {
       urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/leaflet\/.*/i,
       handler: "CacheFirst",
       options: {
@@ -102,6 +113,9 @@ const withPWA = require("next-pwa")({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  env: {
+    OPENROUTE_API_KEY: process.env.OPENROUTE_API_KEY,
+  },
 };
 
 export default withPWA(nextConfig);

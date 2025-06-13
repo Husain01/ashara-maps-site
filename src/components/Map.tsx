@@ -1,15 +1,34 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+  Polyline,
+} from "react-leaflet";
 import L from "leaflet";
 import { zones, Zone, calculateDistance } from "@/data/zones";
+import {
+  getRouteInfo,
+  formatRouteInfo,
+  getGoogleMapsUrl,
+  type RouteInfo,
+  type TransportMode,
+} from "@/utils/routing";
 import {
   ChevronDown,
   ChevronUp,
   Map as MapIcon,
   Crosshair,
   Navigation,
+  Car,
+  PersonStanding,
+  Bike,
+  Clock,
+  Route,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
@@ -32,6 +51,7 @@ interface MapProps {
 
 interface ZoneWithDistance extends Zone {
   distance?: number;
+  routes?: { [key in TransportMode]?: RouteInfo };
 }
 
 function LocationMarker({ userLocation }: { userLocation: [number, number] }) {
@@ -132,6 +152,10 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
   const [zonesWithDistance, setZonesWithDistance] =
     useState<ZoneWithDistance[]>(zones);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<RouteInfo | null>(null);
+  const [loadingRoutes, setLoadingRoutes] = useState<{
+    [key: string]: boolean;
+  }>({});
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
 
@@ -145,6 +169,7 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
           zone.coordinates[0],
           zone.coordinates[1]
         ),
+        routes: {},
       }));
 
       // Sort by distance
@@ -152,6 +177,51 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
       setZonesWithDistance(zonesWithDist);
     }
   }, [userLocation]);
+
+  // Fetch route information for a zone
+  const fetchRouteInfo = async (
+    zone: ZoneWithDistance,
+    mode: TransportMode
+  ) => {
+    if (!userLocation || zone.routes?.[mode]) return;
+
+    const routeKey = `${zone.id}-${mode}`;
+    setLoadingRoutes((prev) => ({ ...prev, [routeKey]: true }));
+
+    try {
+      const routeInfo = await getRouteInfo(
+        userLocation,
+        zone.coordinates,
+        mode
+      );
+      if (routeInfo) {
+        setZonesWithDistance((prev) =>
+          prev.map((z) =>
+            z.id === zone.id
+              ? { ...z, routes: { ...z.routes, [mode]: routeInfo } }
+              : z
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching route:", error);
+    } finally {
+      setLoadingRoutes((prev) => ({ ...prev, [routeKey]: false }));
+    }
+  };
+
+  // Handle route selection and preview
+  const handleRouteSelect = (zone: ZoneWithDistance, mode: TransportMode) => {
+    const route = zone.routes?.[mode];
+    if (route) {
+      setSelectedRoute(route);
+      // Optional: Center map on route
+      if (mapRef.current && route.coordinates.length > 0) {
+        const bounds = L.latLngBounds(route.coordinates);
+        mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+      }
+    }
+  };
 
   // Handle legend zone click - navigate to zone on map
   const handleLegendZoneClick = (zone: Zone) => {
@@ -296,6 +366,16 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
 
         {userLocation && <LocationMarker userLocation={userLocation} />}
 
+        {/* Route visualization */}
+        {selectedRoute && (
+          <Polyline
+            positions={selectedRoute.coordinates}
+            color="#3B82F6"
+            weight={4}
+            opacity={0.8}
+          />
+        )}
+
         {zonesWithDistance.map((zone) => {
           const color = getZoneColor(zone.id);
 
@@ -311,21 +391,114 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
               }}
             >
               <Popup>
-                <div className="text-center min-w-[200px]">
+                <div className="text-center min-w-[250px]">
                   <h3 className="font-bold text-lg mb-2">{zone.name}</h3>
-                  <p className="text-sm text-gray-600 mb-2">{zone.location}</p>
-                  {zone.distance && (
-                    <p className="text-sm font-medium mb-3" style={{ color }}>
-                      {zone.distance.toFixed(1)} km away
-                    </p>
+                  <p className="text-sm text-gray-600 mb-3">{zone.location}</p>
+
+                  {userLocation ? (
+                    <div className="space-y-3">
+                      {/* Transport mode options */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {(
+                          ["driving", "walking", "cycling"] as TransportMode[]
+                        ).map((mode) => {
+                          const route = zone.routes?.[mode];
+                          const isLoading = loadingRoutes[`${zone.id}-${mode}`];
+                          const Icon =
+                            mode === "driving"
+                              ? Car
+                              : mode === "walking"
+                              ? PersonStanding
+                              : Bike;
+
+                          return (
+                            <button
+                              key={mode}
+                              onClick={() => {
+                                if (!route && !isLoading) {
+                                  fetchRouteInfo(zone, mode);
+                                } else if (route) {
+                                  handleRouteSelect(zone, mode);
+                                }
+                              }}
+                              className={`p-2 rounded-md text-xs transition-colors flex flex-col items-center gap-1 ${
+                                route
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              }`}
+                              disabled={isLoading}
+                            >
+                              {isLoading ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                              ) : (
+                                <Icon className="h-4 w-4" />
+                              )}
+                              <span className="capitalize">{mode}</span>
+                              {route && (
+                                <span className="text-xs font-medium">
+                                  {route.duration}min
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Selected route info */}
+                      {selectedRoute &&
+                        selectedRoute.coordinates.some(
+                          (coord) =>
+                            coord[0] >=
+                              Math.min(userLocation[0], zone.coordinates[0]) -
+                                0.1 &&
+                            coord[0] <=
+                              Math.max(userLocation[0], zone.coordinates[0]) +
+                                0.1
+                        ) && (
+                          <div className="bg-blue-50 p-2 rounded-md">
+                            <div className="flex items-center gap-2 text-sm text-blue-800">
+                              <Route className="h-4 w-4" />
+                              <span>{formatRouteInfo(selectedRoute)}</span>
+                            </div>
+                          </div>
+                        )}
+
+                      {/* Navigation button */}
+                      <button
+                        onClick={() => {
+                          const mode = selectedRoute?.mode || "driving";
+                          const googleMapsUrl = getGoogleMapsUrl(
+                            userLocation,
+                            zone.coordinates,
+                            mode
+                          );
+                          window.open(
+                            googleMapsUrl,
+                            "_blank",
+                            "noopener,noreferrer"
+                          );
+                        }}
+                        className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
+                        style={{ backgroundColor: color }}
+                      >
+                        🧭 Navigate with Google Maps
+                        {selectedRoute && ` (${selectedRoute.mode})`}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-500">
+                        Enable location to see routes and travel times
+                      </p>
+                      <button
+                        onClick={() => onZoneClick(zone)}
+                        className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
+                        style={{ backgroundColor: color }}
+                      >
+                        🧭 Navigate with Google Maps
+                      </button>
+                    </div>
                   )}
-                  <button
-                    onClick={() => onZoneClick(zone)}
-                    className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
-                    style={{ backgroundColor: color }}
-                  >
-                    🧭 Navigate with Google Maps
-                  </button>
                 </div>
               </Popup>
             </Marker>
