@@ -1,0 +1,10 @@
+{
+  "name": "Ashara Maps - Zone Navigator",
+  "short_name": "Ashara Maps",
+  "description": "Navigate to Ashara zones with offline maps",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait"
+} 
