@@ -13,16 +13,17 @@ const geistMono = Geist_Mono({
 });
 
 export const viewport: Viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#2563eb',
-}
+  themeColor: "#2563eb",
+};
 
 export const metadata: Metadata = {
   title: "Ashara Maps - Zone Navigator",
-  description: "Navigate to Ashara zones with offline maps and real-time location",
+  description:
+    "Navigate to Ashara zones with offline maps and real-time location",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

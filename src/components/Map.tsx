@@ -8,6 +8,7 @@ import {
   Popup,
   useMap,
   Polyline,
+  CircleMarker,
 } from "react-leaflet";
 import L from "leaflet";
 import { zones, Zone, calculateDistance } from "@/data/zones";
@@ -26,8 +27,8 @@ import {
   Navigation,
   Car,
   PersonStanding,
-  Bike,
   Route,
+  Bus,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
@@ -182,9 +183,21 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
     zone: ZoneWithDistance,
     mode: TransportMode
   ) => {
-    if (!userLocation || zone.routes?.[mode]) return;
+    if (!userLocation) {
+      console.warn("❌ No user location available for routing");
+      return;
+    }
+
+    if (zone.routes?.[mode]) {
+      console.log(`✅ Route already exists for ${zone.id}-${mode}`);
+      return;
+    }
 
     const routeKey = `${zone.id}-${mode}`;
+    console.log(
+      `🚀 Fetching route: ${routeKey} from [${userLocation[0]}, ${userLocation[1]}] to [${zone.coordinates[0]}, ${zone.coordinates[1]}]`
+    );
+
     setLoadingRoutes((prev) => ({ ...prev, [routeKey]: true }));
 
     try {
@@ -193,6 +206,8 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
         zone.coordinates,
         mode
       );
+      console.log(`📍 Route result for ${routeKey}:`, routeInfo);
+
       if (routeInfo) {
         setZonesWithDistance((prev) =>
           prev.map((z) =>
@@ -201,9 +216,24 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
               : z
           )
         );
+        console.log(`✅ Route stored for ${routeKey}`);
+
+        // Automatically select the newly fetched route for display
+        setSelectedRoute(routeInfo);
+        console.log(
+          `🎯 Auto-selected route for display: ${mode} to ${zone.name}`
+        );
+
+        // Center map on the route
+        if (mapRef.current && routeInfo.coordinates.length > 1) {
+          const bounds = L.latLngBounds(routeInfo.coordinates);
+          mapRef.current.fitBounds(bounds, { padding: [30, 30] });
+        }
+      } else {
+        console.warn(`❌ No route returned for ${routeKey}`);
       }
     } catch (error) {
-      console.error("Error fetching route:", error);
+      console.error(`❌ Error fetching route for ${routeKey}:`, error);
     } finally {
       setLoadingRoutes((prev) => ({ ...prev, [routeKey]: false }));
     }
@@ -212,13 +242,17 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
   // Handle route selection and preview
   const handleRouteSelect = (zone: ZoneWithDistance, mode: TransportMode) => {
     const route = zone.routes?.[mode];
+    console.log(`🎯 Route selected for ${zone.name} via ${mode}:`, route);
     if (route) {
       setSelectedRoute(route);
-      // Optional: Center map on route
-      if (mapRef.current && route.coordinates.length > 0) {
+      console.log(`✅ Route set with ${route.coordinates.length} coordinates`);
+      // Center map on route
+      if (mapRef.current && route.coordinates.length > 1) {
         const bounds = L.latLngBounds(route.coordinates);
-        mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+        mapRef.current.fitBounds(bounds, { padding: [30, 30] });
       }
+    } else {
+      console.warn(`❌ No route found for ${zone.name} via ${mode}`);
     }
   };
 
@@ -366,13 +400,81 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
         {userLocation && <LocationMarker userLocation={userLocation} />}
 
         {/* Route visualization */}
-        {selectedRoute && (
-          <Polyline
-            positions={selectedRoute.coordinates}
-            color="#3B82F6"
-            weight={4}
-            opacity={0.8}
-          />
+        {selectedRoute && selectedRoute.coordinates.length > 1 && (
+          <>
+            {(() => {
+              console.log("🗺️ Rendering route on map:", {
+                mode: selectedRoute.mode,
+                coordinates: selectedRoute.coordinates.length,
+                distance: selectedRoute.distance,
+                duration: selectedRoute.duration,
+              });
+              return null;
+            })()}
+
+            {/* Route shadow/outline for better visibility */}
+            <Polyline
+              positions={selectedRoute.coordinates}
+              color="#000000"
+              weight={14}
+              opacity={0.5}
+            />
+
+            {/* Main route line with vibrant colors */}
+            <Polyline
+              positions={selectedRoute.coordinates}
+              color={
+                selectedRoute.mode === "driving"
+                  ? "#1E88E5" // Bright blue for driving
+                  : selectedRoute.mode === "walking"
+                  ? "#43A047" // Bright green for walking
+                  : "#9C27B0" // Bright purple for transit
+              }
+              weight={10}
+              opacity={1}
+              dashArray={selectedRoute.mode === "transit" ? "15, 8" : undefined}
+            />
+
+            {/* Route start marker (your location) */}
+            {userLocation && (
+              <CircleMarker
+                center={selectedRoute.coordinates[0]}
+                radius={12}
+                color="#ffffff"
+                weight={4}
+                fillColor="#22c55e"
+                fillOpacity={1}
+              >
+                <Popup>
+                  <div className="text-center">
+                    <strong>Start</strong>
+                    <br />
+                    Your Location
+                  </div>
+                </Popup>
+              </CircleMarker>
+            )}
+
+            {/* Route end marker (destination zone) */}
+            <CircleMarker
+              center={
+                selectedRoute.coordinates[selectedRoute.coordinates.length - 1]
+              }
+              radius={12}
+              color="#ffffff"
+              weight={4}
+              fillColor="#ef4444"
+              fillOpacity={1}
+            >
+              <Popup>
+                <div className="text-center">
+                  <strong>Destination</strong>
+                  <br />
+                  {formatRouteInfo(selectedRoute)}
+                </div>
+              </Popup>
+            </CircleMarker>
+          </>
         )}
 
         {zonesWithDistance.map((zone) => {
@@ -399,7 +501,7 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
                       {/* Transport mode options */}
                       <div className="grid grid-cols-3 gap-2">
                         {(
-                          ["driving", "walking", "cycling"] as TransportMode[]
+                          ["driving", "walking", "transit"] as TransportMode[]
                         ).map((mode) => {
                           const route = zone.routes?.[mode];
                           const isLoading = loadingRoutes[`${zone.id}-${mode}`];
@@ -408,20 +510,28 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
                               ? Car
                               : mode === "walking"
                               ? PersonStanding
-                              : Bike;
+                              : Bus;
 
                           return (
                             <button
                               key={mode}
-                              onClick={() => {
+                              onClick={async () => {
                                 if (!route && !isLoading) {
-                                  fetchRouteInfo(zone, mode);
+                                  console.log(
+                                    `🔄 Fetching and selecting route for ${mode}...`
+                                  );
+                                  await fetchRouteInfo(zone, mode);
                                 } else if (route) {
+                                  console.log(
+                                    `🎯 Selecting existing route for ${mode}`
+                                  );
                                   handleRouteSelect(zone, mode);
                                 }
                               }}
                               className={`p-2 rounded-md text-xs transition-colors flex flex-col items-center gap-1 ${
-                                route
+                                route && selectedRoute?.mode === mode
+                                  ? "bg-green-100 text-green-800 border-2 border-green-400"
+                                  : route
                                   ? "bg-blue-100 text-blue-800"
                                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                               }`}
@@ -444,23 +554,14 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
                       </div>
 
                       {/* Selected route info */}
-                      {selectedRoute &&
-                        selectedRoute.coordinates.some(
-                          (coord) =>
-                            coord[0] >=
-                              Math.min(userLocation[0], zone.coordinates[0]) -
-                                0.1 &&
-                            coord[0] <=
-                              Math.max(userLocation[0], zone.coordinates[0]) +
-                                0.1
-                        ) && (
-                          <div className="bg-blue-50 p-2 rounded-md">
-                            <div className="flex items-center gap-2 text-sm text-blue-800">
-                              <Route className="h-4 w-4" />
-                              <span>{formatRouteInfo(selectedRoute)}</span>
-                            </div>
+                      {selectedRoute && (
+                        <div className="bg-blue-50 p-2 rounded-md">
+                          <div className="flex items-center gap-2 text-sm text-blue-800">
+                            <Route className="h-4 w-4" />
+                            <span>{formatRouteInfo(selectedRoute)}</span>
                           </div>
-                        )}
+                        </div>
+                      )}
 
                       {/* Navigation button */}
                       <button
