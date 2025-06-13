@@ -27,7 +27,6 @@ import {
   Car,
   PersonStanding,
   Bike,
-  Clock,
   Route,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
