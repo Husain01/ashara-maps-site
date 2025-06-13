@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { zones, Zone, calculateDistance } from "@/data/zones";
+import { ChevronDown, ChevronUp, Map as MapIcon } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 // Fix for default markers in react-leaflet
@@ -38,7 +39,7 @@ function LocationMarker({ userLocation }: { userLocation: [number, number] }) {
 
   const userIcon = new L.Icon({
     iconUrl:
-      "data:image/svg+xml;base64," +
+      "data:image/svg+xml;base64=" +
       btoa(`
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="12" cy="12" r="8" fill="#3B82F6" stroke="white" stroke-width="2"/>
@@ -60,9 +61,42 @@ function LocationMarker({ userLocation }: { userLocation: [number, number] }) {
   ) : null;
 }
 
+// Component to handle map ready event
+function MapReady({ onMapReady }: { onMapReady: (map: L.Map) => void }) {
+  const map = useMap();
+
+  useEffect(() => {
+    onMapReady(map);
+  }, [map, onMapReady]);
+
+  return null;
+}
+
+// Unique colors for each zone
+const zoneColors: { [key: string]: string } = {
+  "saifee-masjid-cmz": "#10B981", // Green
+  "imadi-zone": "#F59E0B", // Amber
+  "hakimi-zone": "#EF4444", // Red
+  "fakhri-zone": "#8B5CF6", // Purple
+  "burhani-zone": "#06B6D4", // Cyan
+  "mohammadi-zone": "#F97316", // Orange
+  "ezzi-zone": "#84CC16", // Lime
+  "vajihi-zone": "#EC4899", // Pink
+  "najmi-zone": "#6366F1", // Indigo
+  "taheri-zone": "#14B8A6", // Teal
+};
+
+// Function to get zone color based on zone ID
+function getZoneColor(zoneId: string): string {
+  return zoneColors[zoneId] || "#6B7280"; // Default gray if zone not found
+}
+
 export default function Map({ userLocation, onZoneClick }: MapProps) {
   const [zonesWithDistance, setZonesWithDistance] =
     useState<ZoneWithDistance[]>(zones);
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const mapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<{ [key: string]: L.Marker }>({});
 
   useEffect(() => {
     if (userLocation) {
@@ -82,21 +116,70 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
     }
   }, [userLocation]);
 
-  // Create custom icons for zones
-  const createZoneIcon = (isNear: boolean) => {
-    const color = isNear ? "#10B981" : "#EF4444"; // Green for close, red for far
-    return new L.Icon({
-      iconUrl:
-        "data:image/svg+xml;base64," +
-        btoa(`
-        <svg width="32" height="40" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M16 40c0 0 16-10.5 16-24C32 7.163 24.837 0 16 0S0 7.163 0 16c0 13.5 16 24 16 24z" fill="${color}"/>
-          <circle cx="16" cy="16" r="8" fill="white"/>
-          <text x="16" y="20" text-anchor="middle" fill="${color}" font-size="10" font-weight="bold">Z</text>
-        </svg>
-      `),
-      iconSize: [32, 40],
-      iconAnchor: [16, 40],
+  // Handle legend zone click - navigate to zone on map
+  const handleLegendZoneClick = (zone: Zone) => {
+    if (mapRef.current) {
+      // Pan to the zone
+      mapRef.current.setView(zone.coordinates, 15, { animate: true });
+
+      // Open the marker popup
+      const marker = markersRef.current[zone.id];
+      if (marker) {
+        setTimeout(() => {
+          marker.openPopup();
+        }, 500); // Small delay to allow pan animation
+      }
+    }
+
+    // Close the legend
+    setIsLegendOpen(false);
+  };
+
+  // Handle map ready
+  const handleMapReady = (map: L.Map) => {
+    mapRef.current = map;
+  };
+
+  // Handle marker ready
+  const handleMarkerReady = (marker: L.Marker, zoneId: string) => {
+    markersRef.current[zoneId] = marker;
+  };
+
+  // Create custom icons for zones with labels
+  const createZoneIcon = (zone: ZoneWithDistance) => {
+    const color = getZoneColor(zone.id);
+    const zoneName = zone.name.replace(" Zone", "").replace(" - CMZ", "");
+
+    return new L.DivIcon({
+      html: `
+        <div style="position: relative; text-align: center;">
+          <svg width="36" height="45" viewBox="0 0 36 45" style="filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));">
+            <path d="M18 45c0 0 18-12 18-27C36 8.059 27.941 0 18 0S0 8.059 0 18c0 15 18 27 18 27z" fill="${color}"/>
+            <circle cx="18" cy="18" r="10" fill="white"/>
+            <circle cx="18" cy="18" r="6" fill="${color}"/>
+          </svg>
+          <div style="
+            position: absolute;
+            top: 48px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            color: #374151;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            border: 1px solid rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+          ">
+            ${zoneName}
+          </div>
+        </div>
+      `,
+      className: "custom-zone-marker",
+      iconSize: [36, 70], // Increased height to accommodate label
+      iconAnchor: [18, 45],
     });
   };
 
@@ -105,7 +188,62 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
   const mapCenter = userLocation || defaultCenter;
 
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full relative">
+      {/* Collapsible Zone Legend */}
+      <div className="absolute top-4 right-4 z-[1000]">
+        {/* Legend Toggle Button */}
+        <button
+          onClick={() => setIsLegendOpen(!isLegendOpen)}
+          className="bg-white rounded-lg shadow-lg p-3 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+        >
+          <MapIcon className="h-4 w-4 text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">Zones</span>
+          {isLegendOpen ? (
+            <ChevronUp className="h-4 w-4 text-gray-600" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-gray-600" />
+          )}
+        </button>
+
+        {/* Legend Dropdown */}
+        {isLegendOpen && (
+          <div className="mt-2 bg-white rounded-lg shadow-lg max-h-[60vh] overflow-y-auto">
+            <div className="p-3">
+              <h4 className="font-semibold mb-3 text-gray-700">
+                Click to navigate to zone
+              </h4>
+              <div className="space-y-2">
+                {zonesWithDistance.map((zone) => (
+                  <button
+                    key={zone.id}
+                    onClick={() => handleLegendZoneClick(zone)}
+                    className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 transition-colors text-left"
+                  >
+                    <div
+                      className="w-4 h-4 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: getZoneColor(zone.id) }}
+                    ></div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-900">
+                        {zone.name.replace(" Zone", "").replace(" - CMZ", "")}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {zone.location}
+                      </div>
+                      {zone.distance && (
+                        <div className="text-xs text-gray-400">
+                          {zone.distance.toFixed(1)} km away
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       <MapContainer
         center={mapCenter}
         zoom={userLocation ? 12 : 11}
@@ -117,18 +255,22 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
+        <MapReady onMapReady={handleMapReady} />
+
         {userLocation && <LocationMarker userLocation={userLocation} />}
 
         {zonesWithDistance.map((zone) => {
-          const isNear = zone.distance ? zone.distance < 5 : false; // Within 5km
+          const color = getZoneColor(zone.id);
 
           return (
             <Marker
               key={zone.id}
               position={zone.coordinates}
-              icon={createZoneIcon(isNear)}
-              eventHandlers={{
-                click: () => onZoneClick(zone),
+              icon={createZoneIcon(zone)}
+              ref={(ref) => {
+                if (ref) {
+                  handleMarkerReady(ref, zone.id);
+                }
               }}
             >
               <Popup>
@@ -136,15 +278,16 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
                   <h3 className="font-bold text-lg mb-2">{zone.name}</h3>
                   <p className="text-sm text-gray-600 mb-2">{zone.location}</p>
                   {zone.distance && (
-                    <p className="text-sm font-medium text-blue-600 mb-3">
+                    <p className="text-sm font-medium mb-3" style={{ color }}>
                       {zone.distance.toFixed(1)} km away
                     </p>
                   )}
                   <button
                     onClick={() => onZoneClick(zone)}
-                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors"
+                    className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
+                    style={{ backgroundColor: color }}
                   >
-                    🧭 Navigate
+                    🧭 Navigate with Google Maps
                   </button>
                 </div>
               </Popup>
@@ -152,6 +295,14 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
           );
         })}
       </MapContainer>
+
+      {/* Custom CSS for markers */}
+      <style jsx>{`
+        .custom-zone-marker {
+          background: none !important;
+          border: none !important;
+        }
+      `}</style>
     </div>
   );
 }

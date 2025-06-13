@@ -11,6 +11,8 @@ import {
   WifiOff,
   MapPin,
   Navigation,
+  Download,
+  X,
 } from "lucide-react";
 
 // Dynamically import Map to avoid SSR issues with Leaflet
@@ -26,6 +28,12 @@ const Map = dynamic(() => import("@/components/Map"), {
   ),
 });
 
+// PWA Install interface
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 export default function HomePage() {
   const [userLocation, setUserLocation] = useState<
     [number, number] | undefined
@@ -35,6 +43,9 @@ export default function HomePage() {
   const [isMapView, setIsMapView] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   useEffect(() => {
     // Check if we're offline
@@ -45,11 +56,41 @@ export default function HomePage() {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
+    // PWA install prompt
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setShowInstallPrompt(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
     };
   }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === "accepted") {
+      setDeferredPrompt(null);
+      setShowInstallPrompt(false);
+    }
+  };
+
+  const dismissInstallPrompt = () => {
+    setShowInstallPrompt(false);
+    setDeferredPrompt(null);
+  };
 
   const requestLocation = async () => {
     setLocationPermissionAsked(true);
@@ -111,6 +152,34 @@ export default function HomePage() {
 
   return (
     <div className="h-screen flex flex-col bg-white">
+      {/* PWA Install Prompt */}
+      {showInstallPrompt && (
+        <div className="bg-blue-600 text-white p-3 relative">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-1">
+              <Download className="h-5 w-5" />
+              <p className="text-sm">
+                Install Ashara Maps for offline access and better performance!
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleInstallClick}
+                className="bg-white text-blue-600 px-3 py-1 rounded text-sm font-medium hover:bg-blue-50 transition-colors"
+              >
+                Install
+              </button>
+              <button
+                onClick={dismissInstallPrompt}
+                className="text-blue-200 hover:text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-blue-600 text-white p-4 shadow-lg">
         <div className="flex items-center justify-between">
@@ -132,6 +201,18 @@ export default function HomePage() {
               <div className="flex items-center gap-1 text-blue-200">
                 <Wifi className="h-4 w-4" />
               </div>
+            )}
+
+            {/* Install button (always visible) */}
+            {deferredPrompt && (
+              <button
+                onClick={handleInstallClick}
+                className="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-xs transition-colors flex items-center gap-1"
+                title="Install app for offline use"
+              >
+                <Download className="h-3 w-3" />
+                Install
+              </button>
             )}
 
             <button
@@ -223,9 +304,23 @@ export default function HomePage() {
           <p className="text-xs text-gray-600">
             Tap any zone to open navigation in Google Maps
           </p>
-          {isOffline && (
+          {isOffline ? (
             <p className="text-xs text-orange-600 mt-1">
               Running offline • Map tiles may be limited
+            </p>
+          ) : deferredPrompt ? (
+            <p className="text-xs text-blue-600 mt-1">
+              💡 Install this app for offline access •
+              <button
+                onClick={handleInstallClick}
+                className="underline hover:text-blue-800 ml-1"
+              >
+                Install now
+              </button>
+            </p>
+          ) : (
+            <p className="text-xs text-green-600 mt-1">
+              ✓ App ready for offline use
             </p>
           )}
         </div>
