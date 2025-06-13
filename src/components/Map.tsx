@@ -226,21 +226,6 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
 
   return (
     <div className="h-full w-full relative">
-      {/* Center on Location Button */}
-      {userLocation && (
-        <button
-          onClick={() => {
-            if (mapRef.current) {
-              mapRef.current.setView(userLocation, 15, { animate: true });
-            }
-          }}
-          className="absolute top-4 left-4 z-[1000] bg-white rounded-lg shadow-lg p-3 hover:bg-gray-50 transition-colors"
-          title="Center on my location"
-        >
-          <Crosshair className="h-5 w-5 text-blue-600" />
-        </button>
-      )}
-
       {/* Collapsible Zone Legend */}
       <div className="absolute top-4 right-4 z-[1000]">
         {/* Legend Toggle Button */}
@@ -347,6 +332,21 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
           );
         })}
       </MapContainer>
+
+      {/* Center on Location Button */}
+      {userLocation && (
+        <button
+          onClick={() => {
+            if (mapRef.current) {
+              mapRef.current.setView(userLocation, 15, { animate: true });
+            }
+          }}
+          className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-50 transition-colors border border-gray-200"
+          title="Center on my location"
+        >
+          <Crosshair className="h-5 w-5 text-blue-600" />
+        </button>
+      )}
 
       {/* Custom CSS for markers */}
       <style jsx>{`
