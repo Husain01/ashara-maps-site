@@ -1,13 +1,20 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import dynamic from 'next/dynamic'
-import { Zone } from '@/data/zones'
-import ZoneList from '@/components/ZoneList'
-import { Map as MapIcon, List, Wifi, WifiOff, MapPin, Navigation } from 'lucide-react'
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
+import { Zone } from "@/data/zones";
+import ZoneList from "@/components/ZoneList";
+import {
+  Map as MapIcon,
+  List,
+  Wifi,
+  WifiOff,
+  MapPin,
+  Navigation,
+} from "lucide-react";
 
 // Dynamically import Map to avoid SSR issues with Leaflet
-const Map = dynamic(() => import('@/components/Map'), {
+const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center bg-gray-100">
@@ -17,85 +24,90 @@ const Map = dynamic(() => import('@/components/Map'), {
       </div>
     </div>
   ),
-})
+});
 
 export default function HomePage() {
-  const [userLocation, setUserLocation] = useState<[number, number] | undefined>()
-  const [locationError, setLocationError] = useState<string>('')
-  const [locationPermissionAsked, setLocationPermissionAsked] = useState(false)
-  const [isMapView, setIsMapView] = useState(true)
-  const [isOffline, setIsOffline] = useState(false)
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false)
+  const [userLocation, setUserLocation] = useState<
+    [number, number] | undefined
+  >();
+  const [locationError, setLocationError] = useState<string>("");
+  const [locationPermissionAsked, setLocationPermissionAsked] = useState(false);
+  const [isMapView, setIsMapView] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   useEffect(() => {
     // Check if we're offline
-    const handleOnline = () => setIsOffline(false)
-    const handleOffline = () => setIsOffline(true)
-    
-    setIsOffline(!navigator.onLine)
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    setIsOffline(!navigator.onLine);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
     return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   const requestLocation = async () => {
-    setLocationPermissionAsked(true)
-    setIsLoadingLocation(true)
-    setLocationError('')
-    
+    setLocationPermissionAsked(true);
+    setIsLoadingLocation(true);
+    setLocationError("");
+
     if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by this browser.')
-      setIsLoadingLocation(false)
-      return
+      setLocationError("Geolocation is not supported by this browser.");
+      setIsLoadingLocation(false);
+      return;
     }
 
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          reject,
-          {
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: true,
             timeout: 15000,
             maximumAge: 300000, // 5 minutes
-          }
-        )
-      })
+          });
+        }
+      );
 
-      setUserLocation([position.coords.latitude, position.coords.longitude])
-      setLocationError('')
-    } catch (error: any) {
-      switch (error.code) {
-        case error.PERMISSION_DENIED:
-          setLocationError('Location access denied. You can still view all zones.')
-          break
-        case error.POSITION_UNAVAILABLE:
-          setLocationError('Location information unavailable. Please try again.')
-          break
-        case error.TIMEOUT:
-          setLocationError('Location request timed out. Please try again.')
-          break
+      setUserLocation([position.coords.latitude, position.coords.longitude]);
+      setLocationError("");
+    } catch (error: unknown) {
+      const geoError = error as GeolocationPositionError;
+      switch (geoError.code) {
+        case geoError.PERMISSION_DENIED:
+          setLocationError(
+            "Location access denied. You can still view all zones."
+          );
+          break;
+        case geoError.POSITION_UNAVAILABLE:
+          setLocationError(
+            "Location information unavailable. Please try again."
+          );
+          break;
+        case geoError.TIMEOUT:
+          setLocationError("Location request timed out. Please try again.");
+          break;
         default:
-          setLocationError('Unable to get location. Please try again.')
-          break
+          setLocationError("Unable to get location. Please try again.");
+          break;
       }
     } finally {
-      setIsLoadingLocation(false)
+      setIsLoadingLocation(false);
     }
-  }
+  };
 
   const handleZoneClick = (zone: Zone) => {
     // Open Google Maps for navigation
-    window.open(zone.googleMapsUrl, '_blank', 'noopener,noreferrer')
-  }
+    window.open(zone.googleMapsUrl, "_blank", "noopener,noreferrer");
+  };
 
   const toggleView = () => {
-    setIsMapView(!isMapView)
-  }
+    setIsMapView(!isMapView);
+  };
 
   return (
     <div className="h-screen flex flex-col bg-white">
@@ -109,7 +121,7 @@ export default function HomePage() {
               <p className="text-blue-100 text-sm">Zone Navigator</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             {isOffline ? (
               <div className="flex items-center gap-1 bg-orange-500 text-white px-2 py-1 rounded text-xs">
@@ -121,7 +133,7 @@ export default function HomePage() {
                 <Wifi className="h-4 w-4" />
               </div>
             )}
-            
+
             <button
               onClick={toggleView}
               className="bg-blue-700 hover:bg-blue-800 px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-1"
@@ -149,7 +161,8 @@ export default function HomePage() {
             <div className="flex items-center gap-2 flex-1">
               <MapPin className="h-5 w-5 text-yellow-600" />
               <p className="text-sm text-yellow-800">
-                <strong>Enable location</strong> to see distances and get the best route to zones.
+                <strong>Enable location</strong> to see distances and get the
+                best route to zones.
               </p>
             </div>
             <button
@@ -163,7 +176,7 @@ export default function HomePage() {
                   Getting...
                 </>
               ) : (
-                'Enable'
+                "Enable"
               )}
             </button>
           </div>
@@ -218,5 +231,5 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
-  )
+  );
 }
