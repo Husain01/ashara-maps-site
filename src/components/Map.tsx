@@ -4,7 +4,13 @@ import { useEffect, useState, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { zones, Zone, calculateDistance } from "@/data/zones";
-import { ChevronDown, ChevronUp, Map as MapIcon } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Map as MapIcon,
+  Crosshair,
+  Navigation,
+} from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 // Fix for default markers in react-leaflet
@@ -33,19 +39,41 @@ function LocationMarker({ userLocation }: { userLocation: [number, number] }) {
 
   useEffect(() => {
     if (userLocation) {
-      map.setView(userLocation, 12);
+      // Set view with animation
+      map.setView(userLocation, 14, { animate: true });
     }
   }, [userLocation, map]);
 
-  const userIcon = new L.Icon({
-    iconUrl:
-      "data:image/svg+xml;base64=" +
-      btoa(`
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="8" fill="#3B82F6" stroke="white" stroke-width="2"/>
-        <circle cx="12" cy="12" r="3" fill="white"/>
-      </svg>
-    `),
+  // Create a more prominent user location icon with pulsing effect
+  const userIcon = new L.DivIcon({
+    html: `
+      <div style="position: relative;">
+        <!-- Pulsing circle -->
+        <div style="
+          width: 32px;
+          height: 32px;
+          background: rgba(59, 130, 246, 0.2);
+          border-radius: 50%;
+          position: absolute;
+          top: -4px;
+          left: -4px;
+          animation: pulse 2s infinite;
+        "></div>
+        <!-- Main location dot -->
+        <svg width="24" height="24" viewBox="0 0 24 24" style="position: relative; z-index: 1;">
+          <circle cx="12" cy="12" r="8" fill="#3B82F6" stroke="white" stroke-width="3"/>
+          <circle cx="12" cy="12" r="4" fill="white"/>
+        </svg>
+      </div>
+      <style>
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 0.7; }
+          50% { transform: scale(1.2); opacity: 0.3; }
+          100% { transform: scale(1); opacity: 0.7; }
+        }
+      </style>
+    `,
+    className: "user-location-marker",
     iconSize: [24, 24],
     iconAnchor: [12, 12],
   });
@@ -54,7 +82,16 @@ function LocationMarker({ userLocation }: { userLocation: [number, number] }) {
     <Marker position={userLocation} icon={userIcon}>
       <Popup>
         <div className="text-center">
-          <strong>Your Location</strong>
+          <div className="flex items-center gap-2 mb-2">
+            <Navigation className="h-4 w-4 text-blue-600" />
+            <strong>Your Location</strong>
+          </div>
+          <p className="text-sm text-gray-600">
+            Latitude: {userLocation[0].toFixed(6)}
+          </p>
+          <p className="text-sm text-gray-600">
+            Longitude: {userLocation[1].toFixed(6)}
+          </p>
         </div>
       </Popup>
     </Marker>
@@ -295,6 +332,21 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
           );
         })}
       </MapContainer>
+
+      {/* Center on Location Button */}
+      {userLocation && (
+        <button
+          onClick={() => {
+            if (mapRef.current) {
+              mapRef.current.setView(userLocation, 15, { animate: true });
+            }
+          }}
+          className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-50 transition-colors border border-gray-200"
+          title="Center on my location"
+        >
+          <Crosshair className="h-5 w-5 text-blue-600" />
+        </button>
+      )}
 
       {/* Custom CSS for markers */}
       <style jsx>{`

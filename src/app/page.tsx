@@ -46,6 +46,7 @@ export default function HomePage() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
 
   useEffect(() => {
     // Check if we're offline
@@ -56,14 +57,35 @@ export default function HomePage() {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
+    // Check if app is already installed
+    const checkInstallStatus = () => {
+      const isStandalone = window.matchMedia(
+        "(display-mode: standalone)"
+      ).matches;
+      const isWebkit =
+        (window.navigator as { standalone?: boolean }).standalone === true;
+      setIsAppInstalled(isStandalone || isWebkit);
+    };
+
+    checkInstallStatus();
+
     // PWA install prompt
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowInstallPrompt(true);
+      if (!isAppInstalled) {
+        setShowInstallPrompt(true);
+      }
+    };
+
+    const handleAppInstalled = () => {
+      setIsAppInstalled(true);
+      setDeferredPrompt(null);
+      setShowInstallPrompt(false);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
       window.removeEventListener("online", handleOnline);
@@ -72,8 +94,9 @@ export default function HomePage() {
         "beforeinstallprompt",
         handleBeforeInstallPrompt
       );
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
-  }, []);
+  }, [isAppInstalled]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
@@ -203,10 +226,27 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Install button (always visible) */}
-            {deferredPrompt && (
+            {/* Install button (permanent) */}
+            {isAppInstalled ? (
+              <div
+                className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs flex items-center gap-1"
+                title="App is installed"
+              >
+                <Download className="h-3 w-3" />
+                Installed
+              </div>
+            ) : (
               <button
-                onClick={handleInstallClick}
+                onClick={
+                  deferredPrompt
+                    ? handleInstallClick
+                    : () => {
+                        // For browsers that don't support beforeinstallprompt
+                        alert(
+                          'To install: Use your browser\'s "Add to Home Screen" or "Install App" option in the menu.'
+                        );
+                      }
+                }
                 className="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-xs transition-colors flex items-center gap-1"
                 title="Install app for offline use"
               >
@@ -281,7 +321,7 @@ export default function HomePage() {
 
       {/* User Location Status */}
       {userLocation && (
-        <div className="bg-green-50 border-b border-green-200 p-2">
+        <div className="bg-green-50 border-b border-green-200 p-2 animate-in slide-in-from-top duration-300">
           <p className="text-sm text-green-800 text-center flex items-center justify-center gap-1">
             <MapPin className="h-4 w-4" />
             Location detected • Zones sorted by distance
@@ -290,12 +330,25 @@ export default function HomePage() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
-        {isMapView ? (
-          <Map userLocation={userLocation} onZoneClick={handleZoneClick} />
-        ) : (
-          <ZoneList userLocation={userLocation} onZoneClick={handleZoneClick} />
+      <main className="flex-1 overflow-hidden relative">
+        {isLoadingLocation && (
+          <div className="absolute inset-0 bg-white bg-opacity-80 z-10 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-600">Getting your location...</p>
+            </div>
+          </div>
         )}
+        <div className="h-full transition-all duration-300 ease-in-out">
+          {isMapView ? (
+            <Map userLocation={userLocation} onZoneClick={handleZoneClick} />
+          ) : (
+            <ZoneList
+              userLocation={userLocation}
+              onZoneClick={handleZoneClick}
+            />
+          )}
+        </div>
       </main>
 
       {/* Bottom Info */}
@@ -307,6 +360,10 @@ export default function HomePage() {
           {isOffline ? (
             <p className="text-xs text-orange-600 mt-1">
               Running offline • Map tiles may be limited
+            </p>
+          ) : isAppInstalled ? (
+            <p className="text-xs text-green-600 mt-1">
+              ✓ App installed • Full offline functionality available
             </p>
           ) : deferredPrompt ? (
             <p className="text-xs text-blue-600 mt-1">
