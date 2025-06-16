@@ -3,13 +3,22 @@
 import { useEffect, useState, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import { zones, Zone, calculateDistance } from "@/data/zones";
+import {
+  zones,
+  Zone,
+  calculateDistance,
+  POI,
+  POI_CATEGORIES,
+  getAllPOIs,
+} from "@/data/zones";
 import {
   ChevronDown,
   ChevronUp,
   Map as MapIcon,
   Crosshair,
   Navigation,
+  Filter,
+  X,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
@@ -132,6 +141,10 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
   const [zonesWithDistance, setZonesWithDistance] =
     useState<ZoneWithDistance[]>(zones);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [selectedPOICategories, setSelectedPOICategories] = useState<
+    Set<POI["category"]>
+  >(new Set());
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
 
@@ -182,6 +195,54 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
     markersRef.current[zoneId] = marker;
   };
 
+  // Handle POI category filter toggle
+  const togglePOICategory = (category: POI["category"]) => {
+    setSelectedPOICategories((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
+      }
+      return newSet;
+    });
+  };
+
+  // Get filtered POIs to display
+  const getFilteredPOIs = (): POI[] => {
+    if (selectedPOICategories.size === 0) return [];
+    return getAllPOIs().filter((poi) =>
+      selectedPOICategories.has(poi.category)
+    );
+  };
+
+  // Create POI marker icon
+  const createPOIIcon = (poi: POI) => {
+    const category = POI_CATEGORIES[poi.category];
+    return new L.DivIcon({
+      html: `
+        <div style="
+          background: ${category.color};
+          color: white;
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          border: 3px solid white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        ">
+          ${category.icon}
+        </div>
+      `,
+      className: "custom-poi-marker",
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+  };
+
   // Create custom icons for zones with labels
   const createZoneIcon = (zone: ZoneWithDistance) => {
     const color = getZoneColor(zone.id);
@@ -226,6 +287,62 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
 
   return (
     <div className="h-full w-full relative">
+      {/* POI Filter */}
+      <div className="absolute top-4 left-4 z-[1000]">
+        <button
+          onClick={() => setIsFilterOpen(!isFilterOpen)}
+          className="bg-white rounded-lg shadow-lg p-3 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+        >
+          <Filter className="h-4 w-4 text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">POIs</span>
+          {selectedPOICategories.size > 0 && (
+            <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">
+              {selectedPOICategories.size}
+            </span>
+          )}
+        </button>
+
+        {/* POI Filter Dropdown */}
+        {isFilterOpen && (
+          <div className="mt-2 bg-white rounded-lg shadow-lg p-3 min-w-[200px]">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-semibold text-gray-700">Filter POIs</h4>
+              <button
+                onClick={() => setIsFilterOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {Object.entries(POI_CATEGORIES).map(([key, category]) => (
+                <label
+                  key={key}
+                  className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPOICategories.has(key as POI["category"])}
+                    onChange={() => togglePOICategory(key as POI["category"])}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-lg">{category.icon}</span>
+                  <span className="text-sm text-gray-700">{category.name}</span>
+                </label>
+              ))}
+            </div>
+            {selectedPOICategories.size > 0 && (
+              <button
+                onClick={() => setSelectedPOICategories(new Set())}
+                className="mt-3 w-full text-xs text-gray-500 hover:text-gray-700 underline"
+              >
+                Clear all filters
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Collapsible Zone Legend */}
       <div className="absolute top-4 right-4 z-[1000]">
         {/* Legend Toggle Button */}
@@ -296,6 +413,58 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
 
         {userLocation && <LocationMarker userLocation={userLocation} />}
 
+        {/* POI Markers */}
+        {getFilteredPOIs().map((poi) => (
+          <Marker
+            key={poi.id}
+            position={poi.coordinates}
+            icon={createPOIIcon(poi)}
+          >
+            <Popup>
+              <div className="text-center min-w-[200px]">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-lg">
+                    {POI_CATEGORIES[poi.category].icon}
+                  </span>
+                  <h3 className="font-bold text-lg">{poi.name}</h3>
+                </div>
+                <div className="text-xs text-gray-500 mb-2">
+                  {POI_CATEGORIES[poi.category].name}
+                </div>
+                {poi.description && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    {poi.description}
+                  </p>
+                )}
+                {poi.hours && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    <strong>Hours:</strong> {poi.hours}
+                  </p>
+                )}
+                {poi.phone && (
+                  <p className="text-sm text-gray-600 mb-3">
+                    <strong>Phone:</strong> {poi.phone}
+                  </p>
+                )}
+                <button
+                  onClick={() => {
+                    const url =
+                      poi.googleMapsUrl ||
+                      `https://www.google.com/maps/search/?api=1&query=${poi.coordinates[0]},${poi.coordinates[1]}`;
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  }}
+                  className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
+                  style={{
+                    backgroundColor: POI_CATEGORIES[poi.category].color,
+                  }}
+                >
+                  🧭 Navigate to {poi.name}
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
         {zonesWithDistance.map((zone) => {
           const color = getZoneColor(zone.id);
 
@@ -319,6 +488,27 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
                       {zone.distance.toFixed(1)} km away
                     </p>
                   )}
+
+                  {/* POIs in this zone */}
+                  {zone.pois && zone.pois.length > 0 && (
+                    <div className="mb-3">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                        Points of Interest:
+                      </h4>
+                      <div className="space-y-1">
+                        {zone.pois.map((poi) => (
+                          <div
+                            key={poi.id}
+                            className="flex items-center gap-2 text-xs text-gray-600"
+                          >
+                            <span>{POI_CATEGORIES[poi.category].icon}</span>
+                            <span>{poi.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     onClick={() => onZoneClick(zone)}
                     className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
@@ -351,6 +541,10 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
       {/* Custom CSS for markers */}
       <style jsx>{`
         .custom-zone-marker {
+          background: none !important;
+          border: none !important;
+        }
+        .custom-poi-marker {
           background: none !important;
           border: none !important;
         }
