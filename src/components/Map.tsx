@@ -220,9 +220,6 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
   const createPOIIcon = (poi: POI) => {
     const category = POI_CATEGORIES[poi.category];
     const showLabel = poi.category === "khaas"; // Show labels for Khaas medical POIs
-    const poiName = poi.name.includes("Mahal us Shifa Khaas")
-      ? poi.name.split(" - ")[0] // Show just the facility name (before the dash)
-      : poi.name;
 
     return new L.DivIcon({
       html: `
