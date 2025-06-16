@@ -21,6 +21,7 @@ export interface Zone {
 // POI Categories for filtering
 export const POI_CATEGORIES = {
   medical: { name: "Medical", icon: "🏥", color: "#ef4444" },
+  khaas: { name: "Khaas Medical", icon: "🏨", color: "#9333ea" },
   // food: { name: "Food", icon: "🍽️", color: "#f59e0b" },
   // parking: { name: "Parking", icon: "🅿️", color: "#3b82f6" },
   // services: { name: "Services", icon: "🏢", color: "#8b5cf6" },
@@ -77,6 +78,15 @@ export const zones: Zone[] = [
         description: "Medical facility providing healthcare services",
         hours: "24/7 Emergency Services",
       },
+      {
+        id: "mahal-us-shifa-khaas-hakimi",
+        name: "Mahal us Shifa - Khaas (Medical)",
+        category: "khaas",
+        coordinates: [13.054858, 80.263672],
+        description:
+          "Specialized medical facility providing advanced healthcare services",
+        hours: "24/7 Emergency Services",
+      },
     ],
   },
   {
@@ -92,6 +102,15 @@ export const zones: Zone[] = [
         category: "medical",
         coordinates: [13.077258, 80.232116],
         description: "Medical facility providing healthcare services",
+        hours: "24/7 Emergency Services",
+      },
+      {
+        id: "mahal-us-shifa-khaas-fakhri",
+        name: "Mahal us Shifa - Khaas (Medical)",
+        category: "khaas",
+        coordinates: [13.077258, 80.232116],
+        description:
+          "Specialized medical facility providing advanced healthcare services",
         hours: "24/7 Emergency Services",
       },
     ],
@@ -200,6 +219,28 @@ export const zones: Zone[] = [
   },
 ];
 
+// Standalone POIs that are not associated with any specific zone
+export const standalonePOIs: POI[] = [
+  {
+    id: "national-hospital-mannady",
+    name: "National Hospital - Mahal us Shifa Khaas (Medical)",
+    category: "khaas",
+    coordinates: [13.096349, 80.291892],
+    description: "Specialized medical services and hospital",
+    hours: "Please contact for hours",
+    googleMapsUrl: "https://maps.app.goo.gl/BJzKo5ZcAtwhZAtR6",
+  },
+  {
+    id: "mufaddal-polyclinic-royapuram",
+    name: "Mufaddal PolyClinic - Mahal us Shifa Khaas (Medical)",
+    category: "khaas",
+    coordinates: [13.1073612, 80.2944235],
+    description: "Specialized medical services and polyclinic",
+    hours: "Please contact for hours",
+    googleMapsUrl: "https://maps.app.goo.gl/JqaY54CeRhyLrT1e9",
+  },
+];
+
 // Helper function to calculate distance between two coordinates
 export function calculateDistance(
   lat1: number,
@@ -220,9 +261,9 @@ export function calculateDistance(
   return R * c;
 }
 
-// Helper function to get all POIs from all zones
+// Helper function to get all POIs from all zones and standalone POIs
 export function getAllPOIs(): POI[] {
-  return zones.flatMap((zone) => zone.pois);
+  return [...zones.flatMap((zone) => zone.pois), ...standalonePOIs];
 }
 
 // Helper function to get POIs by category

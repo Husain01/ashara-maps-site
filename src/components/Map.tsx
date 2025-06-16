@@ -144,7 +144,7 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedPOICategories, setSelectedPOICategories] = useState<
     Set<POI["category"]>
-  >(new Set());
+  >(new Set(["khaas"]));
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
 
@@ -219,26 +219,56 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
   // Create POI marker icon
   const createPOIIcon = (poi: POI) => {
     const category = POI_CATEGORIES[poi.category];
+    const showLabel = poi.category === "khaas"; // Show labels for Khaas medical POIs
+    const poiName = poi.name.includes("Mahal us Shifa Khaas")
+      ? poi.name.split(" - ")[0] // Show just the facility name (before the dash)
+      : poi.name;
+
     return new L.DivIcon({
       html: `
-        <div style="
-          background: ${category.color};
-          color: white;
-          border-radius: 50%;
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 16px;
-          border: 3px solid white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        ">
-          ${category.icon}
+        <div style="position: relative; text-align: center;">
+          <div style="
+            background: ${category.color};
+            color: white;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          ">
+            ${category.icon}
+          </div>
+          ${
+            showLabel
+              ? `
+            <div style="
+              position: absolute;
+              top: 52px;
+              left: 50%;
+              transform: translateX(-50%);
+              background: rgba(147, 51, 234, 0.95);
+              color: white;
+              padding: 1px 4px;
+              border-radius: 3px;
+              font-size: 8px;
+              font-weight: 500;
+              white-space: nowrap;
+              border: 1px solid rgba(255,255,255,0.3);
+              box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            ">
+              Mahal us Shifa Khaas
+            </div>
+          `
+              : ""
+          }
         </div>
       `,
       className: "custom-poi-marker",
-      iconSize: [32, 32],
+      iconSize: [32, showLabel ? 70 : 32], // Increased height for labeled markers
       iconAnchor: [16, 16],
     });
   };
