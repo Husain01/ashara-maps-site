@@ -516,6 +516,17 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
                     </p>
                   )}
 
+                  {/* Show detailed area link for CMZ and Imadi zones */}
+                  {(zone.id === "saifee-masjid-cmz" ||
+                    zone.id === "imadi-zone") && (
+                    <button
+                      onClick={() => window.open("/area/cmz-imadi", "_self")}
+                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700 transition-colors mb-3 flex items-center gap-2 justify-center"
+                    >
+                      🗺️ View Detailed Area Map
+                    </button>
+                  )}
+
                   {/* POIs in this zone */}
                   {zone.pois && zone.pois.length > 0 && (
                     <div className="mb-3">
