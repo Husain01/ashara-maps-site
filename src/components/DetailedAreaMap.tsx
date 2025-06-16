@@ -21,7 +21,6 @@ import {
   Phone,
   Crosshair,
   Zap,
-  ChevronDown,
   Loader2,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
@@ -141,7 +140,6 @@ export default function DetailedAreaMap({
   const [pointsWithDistance, setPointsWithDistance] = useState<
     PointWithDistance[]
   >([]);
-  const [bottomSheetHeight, setBottomSheetHeight] = useState(120); // Initial height
   const [isClient, setIsClient] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
 
@@ -508,7 +506,7 @@ export default function DetailedAreaMap({
           >
             All
           </button>
-          {Object.entries(filterCategories).map(([key, categories]) => (
+          {Object.entries(filterCategories).map(([key]) => (
             <button
               key={key}
               onClick={() =>
