@@ -247,6 +247,16 @@ export const standalonePOIs: POI[] = [
     hours: "Please contact for hours",
     googleMapsUrl: "https://maps.app.goo.gl/JqaY54CeRhyLrT1e9",
   },
+  {
+    id: "mahal-us-shifa-aam-near-cmz",
+    name: "Mahal us Shifa - Aam (Emergency)",
+    category: "medical",
+    coordinates: [13.0925283, 80.2899732],
+    description:
+      "Emergency medical facility near CMZ providing healthcare services",
+    hours: "24/7 Emergency Services",
+    googleMapsUrl: "https://maps.app.goo.gl/VKaqw7VLe1hvdaYK7",
+  },
 ];
 
 // Helper function to calculate distance between two coordinates
