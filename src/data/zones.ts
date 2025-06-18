@@ -20,8 +20,16 @@ export interface Zone {
 
 // POI Categories for filtering
 export const POI_CATEGORIES = {
-  medical: { name: "Medical", icon: "🏥", color: "#ef4444" },
-  khaas: { name: "Khaas Medical", icon: "🏨", color: "#9333ea" },
+  medical: {
+    name: "Mahal us Shifa Aam (Emergency)",
+    icon: "🏥",
+    color: "#ef4444",
+  },
+  khaas: {
+    name: "Mahal us Shifa Khaas (Consultation)",
+    icon: "🏨",
+    color: "#9333ea",
+  },
   // food: { name: "Food", icon: "🍽️", color: "#f59e0b" },
   // parking: { name: "Parking", icon: "🅿️", color: "#3b82f6" },
   // services: { name: "Services", icon: "🏢", color: "#8b5cf6" },
@@ -80,7 +88,7 @@ export const zones: Zone[] = [
       },
       {
         id: "mahal-us-shifa-khaas-hakimi",
-        name: "Mahal us Shifa - Aam (Consultation)",
+        name: "Mahal us Shifa - Khaas (Consultation)",
         category: "khaas",
         coordinates: [13.054858, 80.263672],
         description:
@@ -106,7 +114,7 @@ export const zones: Zone[] = [
       },
       {
         id: "mahal-us-shifa-khaas-fakhri",
-        name: "Mahal us Shifa - Aam (Consultation)",
+        name: "Mahal us Shifa - Khaas (Consultation)",
         category: "khaas",
         coordinates: [13.077258, 80.232116],
         description:
@@ -187,14 +195,14 @@ export const zones: Zone[] = [
     id: "najmi-zone",
     name: "Najmi Zone",
     location: "Dawoodi Markaz, Madhavaram",
-    coordinates: [13.1374827,80.2312319],
+    coordinates: [13.1374827, 80.2312319],
     googleMapsUrl: "https://maps.app.goo.gl/H3fU1vXgZR3oihFw6",
     pois: [
       {
         id: "mahal-us-shifa-aam-najmi",
         name: "Mahal us Shifa - Aam (Emergency)",
         category: "medical",
-        coordinates: [13.1374827,80.2312319],
+        coordinates: [13.1374827, 80.2312319],
         description: "Medical facility providing healthcare services",
         hours: "24/7 Emergency Services",
       },
@@ -223,7 +231,7 @@ export const zones: Zone[] = [
 export const standalonePOIs: POI[] = [
   {
     id: "national-hospital-mannady",
-    name: "National Hospital - Mahal us Shifa Aam (Consultation)",
+    name: "National Hospital - Mahal us Shifa Khaas (Consultation)",
     category: "khaas",
     coordinates: [13.096349, 80.291892],
     description: "Specialized medical services and hospital",
@@ -232,7 +240,7 @@ export const standalonePOIs: POI[] = [
   },
   {
     id: "mufaddal-polyclinic-royapuram",
-    name: "Mufaddal PolyClinic - Mahal us Shifa Aam (Consultation)",
+    name: "Mufaddal PolyClinic - Mahal us Shifa Khaas (Consultation)",
     category: "khaas",
     coordinates: [13.1073612, 80.2944235],
     description: "Specialized medical services and polyclinic",
