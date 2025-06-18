@@ -187,7 +187,7 @@ export const zones: Zone[] = [
     id: "najmi-zone",
     name: "Najmi Zone",
     location: "Dawoodi Markaz, Madhavaram",
-    coordinates: [13.1497459, 80.2317],
+    coordinates: [13.1372385,80.2312915],
     googleMapsUrl: "https://maps.app.goo.gl/H3fU1vXgZR3oihFw6",
     pois: [
       {
