@@ -20,6 +20,7 @@ import {
   Filter,
   X,
 } from "lucide-react";
+import HospitalDrawer from "./HospitalDrawer";
 import "leaflet/dist/leaflet.css";
 
 // Fix for default markers in react-leaflet
@@ -145,6 +146,8 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
   const [selectedPOICategories, setSelectedPOICategories] = useState<
     Set<POI["category"]>
   >(new Set(["khaas"]));
+  const [selectedHospital, setSelectedHospital] = useState<POI | null>(null);
+  const [isHospitalDrawerOpen, setIsHospitalDrawerOpen] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
 
@@ -206,6 +209,12 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
       }
       return newSet;
     });
+  };
+
+  // Handle hospital click - open drawer
+  const handleHospitalClick = (hospital: POI) => {
+    setSelectedHospital(hospital);
+    setIsHospitalDrawerOpen(true);
   };
 
   // Get filtered POIs to display
@@ -315,115 +324,123 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
   return (
     <div className="h-full w-full relative">
       {/* POI Filter */}
-      <div className="absolute top-4 left-4 z-[1000]">
-        <button
-          onClick={() => setIsFilterOpen(!isFilterOpen)}
-          className="bg-white rounded-lg shadow-lg p-3 flex items-center gap-2 hover:bg-gray-50 transition-colors"
-        >
-          <Filter className="h-4 w-4 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">POIs</span>
-          {selectedPOICategories.size > 0 && (
-            <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">
-              {selectedPOICategories.size}
-            </span>
-          )}
-        </button>
-
-        {/* POI Filter Dropdown */}
-        {isFilterOpen && (
-          <div className="mt-2 bg-white rounded-lg shadow-lg p-3 min-w-[200px]">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-semibold text-gray-700">Filter POIs</h4>
-              <button
-                onClick={() => setIsFilterOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="space-y-2">
-              {Object.entries(POI_CATEGORIES).map(([key, category]) => (
-                <label
-                  key={key}
-                  className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedPOICategories.has(key as POI["category"])}
-                    onChange={() => togglePOICategory(key as POI["category"])}
-                    className="rounded border-gray-300"
-                  />
-                  <span className="text-lg">{category.icon}</span>
-                  <span className="text-sm text-gray-700">{category.name}</span>
-                </label>
-              ))}
-            </div>
+      {!isHospitalDrawerOpen && (
+        <div className="absolute top-4 left-4 z-[1000]">
+          <button
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className="bg-white rounded-lg shadow-lg p-3 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+          >
+            <Filter className="h-4 w-4 text-gray-600" />
+            <span className="text-sm font-medium text-gray-700">POIs</span>
             {selectedPOICategories.size > 0 && (
-              <button
-                onClick={() => setSelectedPOICategories(new Set())}
-                className="mt-3 w-full text-xs text-gray-500 hover:text-gray-700 underline"
-              >
-                Clear all filters
-              </button>
+              <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">
+                {selectedPOICategories.size}
+              </span>
             )}
-          </div>
-        )}
-      </div>
+          </button>
 
-      {/* Collapsible Zone Legend */}
-      <div className="absolute top-4 right-4 z-[1000]">
-        {/* Legend Toggle Button */}
-        <button
-          onClick={() => setIsLegendOpen(!isLegendOpen)}
-          className="bg-white rounded-lg shadow-lg p-3 flex items-center gap-2 hover:bg-gray-50 transition-colors"
-        >
-          <MapIcon className="h-4 w-4 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">Zones</span>
-          {isLegendOpen ? (
-            <ChevronUp className="h-4 w-4 text-gray-600" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-gray-600" />
-          )}
-        </button>
-
-        {/* Legend Dropdown */}
-        {isLegendOpen && (
-          <div className="mt-2 bg-white rounded-lg shadow-lg max-h-[60vh] overflow-y-auto">
-            <div className="p-3">
-              <h4 className="font-semibold mb-3 text-gray-700">
-                Click to navigate to zone
-              </h4>
+          {/* POI Filter Dropdown */}
+          {isFilterOpen && (
+            <div className="mt-2 bg-white rounded-lg shadow-lg p-3 min-w-[200px]">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-gray-700">Filter POIs</h4>
+                <button
+                  onClick={() => setIsFilterOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
               <div className="space-y-2">
-                {zonesWithDistance.map((zone) => (
-                  <button
-                    key={zone.id}
-                    onClick={() => handleLegendZoneClick(zone)}
-                    className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 transition-colors text-left"
+                {Object.entries(POI_CATEGORIES).map(([key, category]) => (
+                  <label
+                    key={key}
+                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
                   >
-                    <div
-                      className="w-4 h-4 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: getZoneColor(zone.id) }}
-                    ></div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-900">
-                        {zone.name.replace(" Zone", "").replace(" - CMZ", "")}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {zone.location}
-                      </div>
-                      {zone.distance && (
-                        <div className="text-xs text-gray-400">
-                          {zone.distance.toFixed(1)} km away
-                        </div>
+                    <input
+                      type="checkbox"
+                      checked={selectedPOICategories.has(
+                        key as POI["category"]
                       )}
-                    </div>
-                  </button>
+                      onChange={() => togglePOICategory(key as POI["category"])}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-lg">{category.icon}</span>
+                    <span className="text-sm text-gray-700">
+                      {category.name}
+                    </span>
+                  </label>
                 ))}
               </div>
+              {selectedPOICategories.size > 0 && (
+                <button
+                  onClick={() => setSelectedPOICategories(new Set())}
+                  className="mt-3 w-full text-xs text-gray-500 hover:text-gray-700 underline"
+                >
+                  Clear all filters
+                </button>
+              )}
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
+
+      {/* Collapsible Zone Legend */}
+      {!isHospitalDrawerOpen && (
+        <div className="absolute top-4 right-4 z-[1000]">
+          {/* Legend Toggle Button */}
+          <button
+            onClick={() => setIsLegendOpen(!isLegendOpen)}
+            className="bg-white rounded-lg shadow-lg p-3 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+          >
+            <MapIcon className="h-4 w-4 text-gray-600" />
+            <span className="text-sm font-medium text-gray-700">Zones</span>
+            {isLegendOpen ? (
+              <ChevronUp className="h-4 w-4 text-gray-600" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-gray-600" />
+            )}
+          </button>
+
+          {/* Legend Dropdown */}
+          {isLegendOpen && (
+            <div className="mt-2 bg-white rounded-lg shadow-lg max-h-[60vh] overflow-y-auto">
+              <div className="p-3">
+                <h4 className="font-semibold mb-3 text-gray-700">
+                  Click to navigate to zone
+                </h4>
+                <div className="space-y-2">
+                  {zonesWithDistance.map((zone) => (
+                    <button
+                      key={zone.id}
+                      onClick={() => handleLegendZoneClick(zone)}
+                      className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <div
+                        className="w-4 h-4 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getZoneColor(zone.id) }}
+                      ></div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">
+                          {zone.name.replace(" Zone", "").replace(" - CMZ", "")}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {zone.location}
+                        </div>
+                        {zone.distance && (
+                          <div className="text-xs text-gray-400">
+                            {zone.distance.toFixed(1)} km away
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <MapContainer
         center={mapCenter}
@@ -473,20 +490,48 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
                     <strong>Phone:</strong> {poi.phone}
                   </p>
                 )}
-                <button
-                  onClick={() => {
-                    const url =
-                      poi.googleMapsUrl ||
-                      `https://www.google.com/maps/search/?api=1&query=${poi.coordinates[0]},${poi.coordinates[1]}`;
-                    window.open(url, "_blank", "noopener,noreferrer");
-                  }}
-                  className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
-                  style={{
-                    backgroundColor: POI_CATEGORIES[poi.category].color,
-                  }}
-                >
-                  🧭 Navigate to {poi.name}
-                </button>
+
+                {poi.category === "hospital" && poi.coordinators ? (
+                  // Hospital - Show coordinator info button
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleHospitalClick(poi)}
+                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors"
+                    >
+                      👥 View Coordinators & Info
+                    </button>
+                    <button
+                      onClick={() => {
+                        const url =
+                          poi.googleMapsUrl ||
+                          `https://www.google.com/maps/search/?api=1&query=${poi.coordinates[0]},${poi.coordinates[1]}`;
+                        window.open(url, "_blank", "noopener,noreferrer");
+                      }}
+                      className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
+                      style={{
+                        backgroundColor: POI_CATEGORIES[poi.category].color,
+                      }}
+                    >
+                      🧭 Navigate with Google Maps
+                    </button>
+                  </div>
+                ) : (
+                  // Regular POI - Just navigation
+                  <button
+                    onClick={() => {
+                      const url =
+                        poi.googleMapsUrl ||
+                        `https://www.google.com/maps/search/?api=1&query=${poi.coordinates[0]},${poi.coordinates[1]}`;
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }}
+                    className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
+                    style={{
+                      backgroundColor: POI_CATEGORIES[poi.category].color,
+                    }}
+                  >
+                    🧭 Navigate to {poi.name}
+                  </button>
+                )}
               </div>
             </Popup>
           </Marker>
@@ -551,7 +596,7 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
       </MapContainer>
 
       {/* Center on Location Button */}
-      {userLocation && (
+      {userLocation && !isHospitalDrawerOpen && (
         <button
           onClick={() => {
             if (mapRef.current) {
@@ -576,6 +621,14 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
           border: none !important;
         }
       `}</style>
+
+      {/* Hospital Information Drawer */}
+      <HospitalDrawer
+        hospital={selectedHospital}
+        isOpen={isHospitalDrawerOpen}
+        onClose={() => setIsHospitalDrawerOpen(false)}
+        userLocation={userLocation}
+      />
     </div>
   );
 }
