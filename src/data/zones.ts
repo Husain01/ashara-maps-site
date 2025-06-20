@@ -282,13 +282,13 @@ export const standalonePOIs: POI[] = [
     id: "national-hospital-parrys",
     name: "National Hospital (Parrys)",
     category: "hospital",
-    coordinates: [13.0927, 80.2905], // Parrys, George Town area
+    coordinates: [13.0964184, 80.2915263], // Parrys, George Town area
     address:
       "Chennai National Hospital, 12, Jaffar Sarang St, Parrys, George Town, Chennai, Tamil Nadu 600001",
     description:
       "Multi-specialty hospital serving multiple zones with emergency and consultation services",
     hours: "24/7 Emergency Services",
-    googleMapsUrl: "https://maps.app.goo.gl/VBpStBgPjeBo6PXu8",
+    googleMapsUrl: "https://maps.app.goo.gl/P66VebPVWmYsxprG7",
     serviceZones: [
       "saifee-masjid-cmz",
       "burhani-zone",
@@ -370,13 +370,13 @@ export const standalonePOIs: POI[] = [
     id: "apollo-hospitals-greams-road",
     name: "Apollo Hospitals (Greams Road)",
     category: "hospital",
-    coordinates: [13.0601, 80.2548], // Thousand Lights area
+    coordinates: [13.0631888, 80.2516072], // Thousand Lights area
     address:
       "Apollo Hospital, Enterprise Limited, 14, Greams Rd, Thousand Lights West, Thousand Lights, Chennai, Tamil Nadu 600006",
     description:
       "Premier multi-specialty hospital with advanced medical facilities",
     hours: "24/7 Emergency Services",
-    googleMapsUrl: "https://maps.app.goo.gl/acVWgUJTsTGbcy677",
+    googleMapsUrl: "https://maps.app.goo.gl/pPqWyQkh2M7uXpaC9",
     serviceZones: ["hakimi-zone", "taheri-zone"],
     coordinators: {
       "hakimi-zone": [
@@ -424,12 +424,12 @@ export const standalonePOIs: POI[] = [
     id: "meridian-hospital",
     name: "Meridian Hospital",
     category: "hospital",
-    coordinates: [13.1374, 80.2312], // Kolathur area
+    coordinates: [13.1363207, 80.2159897], // Kolathur area
     address:
       "46D, Jawaharlal Nehru Salai, 200 Feet Ring Rd, Kolathur, Chennai, Tamil Nadu 600099",
     description: "Modern hospital facility serving northern Chennai areas",
     hours: "24/7 Emergency Services",
-    googleMapsUrl: "https://maps.app.goo.gl/qvW5wfh9Rc6XYWTP7",
+    googleMapsUrl: "https://maps.app.goo.gl/JUCnpLGKRsK7DVYn8",
     serviceZones: ["najmi-zone"],
     coordinators: {
       "najmi-zone": [
@@ -450,13 +450,13 @@ export const standalonePOIs: POI[] = [
     id: "apollo-first-med",
     name: "Apollo First Med",
     category: "hospital",
-    coordinates: [13.0772, 80.2321], // Kilpauk area
+    coordinates: [13.0777253, 80.24593], // Kilpauk area
     address:
       "Apollo First Med Hospital, 154, Poonamallee High Rd, Kilpauk, Chennai, Tamil Nadu 600010",
     description:
       "Specialized medical facility with expert consultation services",
     hours: "Please contact for hours",
-    googleMapsUrl: "https://maps.app.goo.gl/aXwL6BMynBo7DkbX6",
+    googleMapsUrl: "https://maps.app.goo.gl/P9AXCc4BKh786TH59",
     serviceZones: ["fakhri-zone"],
     coordinators: {
       "fakhri-zone": [
@@ -468,6 +468,61 @@ export const standalonePOIs: POI[] = [
         { name: "Dr. Alefiya Akbari", phone: "+91 9677794067", role: "Doctor" },
       ],
     },
+  },
+  // Pharmacies
+  {
+    id: "apollo-pharmacy-nungambakkam",
+    name: "Apollo Pharmacy - Nungambakkam",
+    category: "pharmacy",
+    coordinates: [13.0643853, 80.243343],
+    description: "Apollo pharmacy providing medicines and healthcare products",
+    hours: "Please contact for hours",
+    googleMapsUrl: "https://maps.app.goo.gl/Y1N3RkPfGtP5T56d6",
+  },
+  {
+    id: "apollo-pharmacy-greams-road",
+    name: "Apollo Pharmacy - Greams Road",
+    category: "pharmacy",
+    coordinates: [13.0630362, 80.2513374],
+    description: "Apollo pharmacy providing medicines and healthcare products",
+    hours: "Please contact for hours",
+    googleMapsUrl: "https://maps.app.goo.gl/F6iRoX39gvJZYUE2A",
+  },
+  {
+    id: "muthu-pharma-t-nagar",
+    name: "Muthu Pharma - T Nagar",
+    category: "pharmacy",
+    coordinates: [13.0505927, 80.240347],
+    description: "Muthu pharmacy providing medicines and healthcare products",
+    hours: "Please contact for hours",
+    googleMapsUrl: "https://maps.app.goo.gl/EakizSW7KKMWrzPPA",
+  },
+  {
+    id: "muthu-pharma-egmore",
+    name: "Muthu Pharma - Egmore",
+    category: "pharmacy",
+    coordinates: [13.0747061, 80.2556677],
+    description: "Muthu pharmacy providing medicines and healthcare products",
+    hours: "Please contact for hours",
+    googleMapsUrl: "https://maps.app.goo.gl/4wkxCrvzu2a8h16J8",
+  },
+  {
+    id: "apollo-pharmacy-periamet",
+    name: "Apollo Pharmacy - Periamet",
+    category: "pharmacy",
+    coordinates: [13.0854667, 80.2659144],
+    description: "Apollo pharmacy providing medicines and healthcare products",
+    hours: "Please contact for hours",
+    googleMapsUrl: "https://maps.app.goo.gl/qigEuAqm4zz67puy7",
+  },
+  {
+    id: "apollo-pharmacy-ttk-road-alwarpet",
+    name: "Apollo Pharmacy - TTK Road, Alwarpet",
+    category: "pharmacy",
+    coordinates: [13.0342003, 80.2538902],
+    description: "Apollo pharmacy providing medicines and healthcare products",
+    hours: "Please contact for hours",
+    googleMapsUrl: "https://maps.app.goo.gl/2FZqmAzvpScP8q4R9",
   },
 ];
 
