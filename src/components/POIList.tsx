@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   zones,
   Zone,
@@ -12,11 +12,8 @@ import {
   Navigation,
   MapPin,
   Filter,
-  X,
   ChevronDown,
   ChevronUp,
-  Hospital,
-  Building2,
 } from "lucide-react";
 
 interface POIWithDistance extends POI {
@@ -328,7 +325,7 @@ export default function POIList({
       {/* Results List */}
       <div className="flex-1 overflow-y-auto">
         <div className="divide-y divide-gray-200">
-          {filteredData.map((item, index) => (
+          {filteredData.map((item) => (
             <div
               key={`${"location" in item ? "zone" : "poi"}-${item.id}`}
               className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"

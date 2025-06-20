@@ -837,7 +837,7 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
                       mapRef.current.setView(coords, 15, { animate: true });
                     }
                   },
-                  (error) => {
+                  () => {
                     alert(
                       "Location access denied or unavailable. Please enable location in your browser settings."
                     );
