@@ -75,7 +75,7 @@ export default function HospitalDrawer({
     if (hospital) {
       setSelectedZone("");
     }
-  }, [hospital?.id]);
+  }, [hospital]);
 
   const calculateDistance = (
     lat1: number,

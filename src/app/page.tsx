@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Zone, POI } from "@/data/zones";
-import ZoneList from "@/components/ZoneList";
 import POIList from "@/components/POIList";
 import {
   Map as MapIcon,
