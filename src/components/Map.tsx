@@ -19,6 +19,8 @@ import {
   Navigation,
   Filter,
   X,
+  Search,
+  MapPin,
 } from "lucide-react";
 import HospitalDrawer from "./HospitalDrawer";
 import "leaflet/dist/leaflet.css";
@@ -148,6 +150,9 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
   >(new Set(["khaas"]));
   const [selectedHospital, setSelectedHospital] = useState<POI | null>(null);
   const [isHospitalDrawerOpen, setIsHospitalDrawerOpen] = useState(false);
+  const [mapSearchTerm, setMapSearchTerm] = useState("");
+  const [mapSearchResults, setMapSearchResults] = useState<(POI | Zone)[]>([]);
+  const [showMapSearch, setShowMapSearch] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
 
@@ -223,6 +228,110 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
     return getAllPOIs().filter((poi) =>
       selectedPOICategories.has(poi.category)
     );
+  };
+
+  // Map search functionality
+  const handleMapSearch = (searchTerm: string) => {
+    setMapSearchTerm(searchTerm);
+
+    if (!searchTerm.trim()) {
+      setMapSearchResults([]);
+      return;
+    }
+
+    const allPOIs = getAllPOIs();
+    const searchLower = searchTerm.toLowerCase();
+
+    // Search in POIs
+    const poiResults = allPOIs.filter(
+      (poi) =>
+        poi.name.toLowerCase().includes(searchLower) ||
+        poi.description?.toLowerCase().includes(searchLower) ||
+        POI_CATEGORIES[poi.category].name.toLowerCase().includes(searchLower)
+    );
+
+    // Search in zones
+    const zoneResults = zones.filter(
+      (zone) =>
+        zone.name.toLowerCase().includes(searchLower) ||
+        zone.location.toLowerCase().includes(searchLower)
+    );
+
+    setMapSearchResults([...zoneResults, ...poiResults]);
+  };
+
+  // Handle search result click
+  const handleSearchResultClick = (item: POI | Zone) => {
+    if (mapRef.current) {
+      // Navigate to the location with a higher zoom level for better visibility
+      mapRef.current.setView(item.coordinates, 17, { animate: true });
+
+      // Check if it's a Zone or POI
+      const isZone = "location" in item;
+
+      if (isZone) {
+        // For zones, find and open the zone marker
+        const marker = markersRef.current[item.id];
+        if (marker) {
+          setTimeout(() => {
+            marker.openPopup();
+            // Add visual feedback that the search worked
+            marker
+              .getElement()
+              ?.style.setProperty("animation", "bounce 0.6s ease-in-out");
+            setTimeout(() => {
+              marker.getElement()?.style.removeProperty("animation");
+            }, 600);
+          }, 600);
+        }
+      } else {
+        // For POIs, ensure the category is enabled in the filter
+        const poi = item as POI;
+
+        // Auto-enable the POI category if it's not already enabled
+        if (!selectedPOICategories.has(poi.category)) {
+          setSelectedPOICategories((prev) => new Set([...prev, poi.category]));
+        }
+
+        // Try to find and open the POI marker
+        // Since POIs use the same marker system, look for the marker by ID
+        const findAndOpenMarker = () => {
+          const marker = markersRef.current[poi.id];
+          if (marker) {
+            marker.openPopup();
+            // Add visual feedback that the search worked
+            marker
+              .getElement()
+              ?.style.setProperty("animation", "bounce 0.6s ease-in-out");
+            setTimeout(() => {
+              marker.getElement()?.style.removeProperty("animation");
+            }, 600);
+          } else {
+            // If marker not found immediately, try again after a short delay
+            // This gives time for the POI category to be enabled and markers to render
+            setTimeout(() => {
+              const retryMarker = markersRef.current[poi.id];
+              if (retryMarker) {
+                retryMarker.openPopup();
+                retryMarker
+                  .getElement()
+                  ?.style.setProperty("animation", "bounce 0.6s ease-in-out");
+                setTimeout(() => {
+                  retryMarker.getElement()?.style.removeProperty("animation");
+                }, 600);
+              }
+            }, 300);
+          }
+        };
+
+        setTimeout(findAndOpenMarker, 500);
+      }
+    }
+
+    // Clear search
+    setMapSearchTerm("");
+    setMapSearchResults([]);
+    setShowMapSearch(false);
   };
 
   // Create POI marker icon
@@ -323,122 +432,223 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
 
   return (
     <div className="h-full w-full relative">
-      {/* POI Filter */}
+      {/* Top Control Bar */}
       {!isHospitalDrawerOpen && (
-        <div className="absolute top-4 left-4 z-[1000]">
-          <button
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className="bg-white rounded-lg shadow-lg p-3 flex items-center gap-2 hover:bg-gray-50 transition-colors"
-          >
-            <Filter className="h-4 w-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">POIs</span>
-            {selectedPOICategories.size > 0 && (
-              <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">
-                {selectedPOICategories.size}
-              </span>
-            )}
-          </button>
+        <div className="absolute top-3 left-3 right-3 z-[1000]">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* POI Filter */}
+            <div className="relative">
+              <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="bg-white rounded-lg shadow-lg px-2 py-2 sm:px-3 flex items-center gap-1 sm:gap-2 hover:bg-gray-50 transition-colors"
+              >
+                <Filter className="h-4 w-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700 hidden md:inline">
+                  POIs
+                </span>
+                {selectedPOICategories.size > 0 && (
+                  <span className="bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                    {selectedPOICategories.size}
+                  </span>
+                )}
+              </button>
 
-          {/* POI Filter Dropdown */}
-          {isFilterOpen && (
-            <div className="mt-2 bg-white rounded-lg shadow-lg p-3 min-w-[200px]">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-gray-700">Filter POIs</h4>
-                <button
-                  onClick={() => setIsFilterOpen(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="space-y-2">
-                {Object.entries(POI_CATEGORIES).map(([key, category]) => (
-                  <label
-                    key={key}
-                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedPOICategories.has(
-                        key as POI["category"]
-                      )}
-                      onChange={() => togglePOICategory(key as POI["category"])}
-                      className="rounded border-gray-300"
-                    />
-                    <span className="text-lg">{category.icon}</span>
-                    <span className="text-sm text-gray-700">
-                      {category.name}
-                    </span>
-                  </label>
-                ))}
-              </div>
-              {selectedPOICategories.size > 0 && (
-                <button
-                  onClick={() => setSelectedPOICategories(new Set())}
-                  className="mt-3 w-full text-xs text-gray-500 hover:text-gray-700 underline"
-                >
-                  Clear all filters
-                </button>
+              {/* POI Filter Dropdown */}
+              {isFilterOpen && (
+                <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-3 min-w-[220px] z-20">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-gray-700">Filter POIs</h4>
+                    <button
+                      onClick={() => setIsFilterOpen(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {Object.entries(POI_CATEGORIES).map(([key, category]) => (
+                      <label
+                        key={key}
+                        className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedPOICategories.has(
+                            key as POI["category"]
+                          )}
+                          onChange={() =>
+                            togglePOICategory(key as POI["category"])
+                          }
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-lg">{category.icon}</span>
+                        <span className="text-sm text-gray-700">
+                          {category.name}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedPOICategories.size > 0 && (
+                    <button
+                      onClick={() => setSelectedPOICategories(new Set())}
+                      className="mt-3 w-full text-xs text-gray-500 hover:text-gray-700 underline"
+                    >
+                      Clear all filters
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-      )}
 
-      {/* Collapsible Zone Legend */}
-      {!isHospitalDrawerOpen && (
-        <div className="absolute top-4 right-4 z-[1000]">
-          {/* Legend Toggle Button */}
-          <button
-            onClick={() => setIsLegendOpen(!isLegendOpen)}
-            className="bg-white rounded-lg shadow-lg p-3 flex items-center gap-2 hover:bg-gray-50 transition-colors"
-          >
-            <MapIcon className="h-4 w-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">Zones</span>
-            {isLegendOpen ? (
-              <ChevronUp className="h-4 w-4 text-gray-600" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-gray-600" />
-            )}
-          </button>
-
-          {/* Legend Dropdown */}
-          {isLegendOpen && (
-            <div className="mt-2 bg-white rounded-lg shadow-lg max-h-[60vh] overflow-y-auto">
-              <div className="p-3">
-                <h4 className="font-semibold mb-3 text-gray-700">
-                  Click to navigate to zone
-                </h4>
-                <div className="space-y-2">
-                  {zonesWithDistance.map((zone) => (
-                    <button
-                      key={zone.id}
-                      onClick={() => handleLegendZoneClick(zone)}
-                      className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 transition-colors text-left"
-                    >
-                      <div
-                        className="w-4 h-4 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: getZoneColor(zone.id) }}
-                      ></div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">
-                          {zone.name.replace(" Zone", "").replace(" - CMZ", "")}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {zone.location}
-                        </div>
-                        {zone.distance && (
-                          <div className="text-xs text-gray-400">
-                            {zone.distance.toFixed(1)} km away
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+            {/* Search Bar - Central */}
+            <div className="flex-1 relative min-w-0 max-w-sm mx-auto">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={mapSearchTerm}
+                  onChange={(e) => handleMapSearch(e.target.value)}
+                  onFocus={() => setShowMapSearch(true)}
+                  className="w-full pl-10 pr-10 py-2.5 bg-white rounded-lg shadow-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+                {mapSearchTerm && (
+                  <button
+                    onClick={() => {
+                      setMapSearchTerm("");
+                      setMapSearchResults([]);
+                      setShowMapSearch(false);
+                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
+
+              {/* Search Results Dropdown */}
+              {showMapSearch && mapSearchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-72 overflow-y-auto z-20 min-w-[280px] max-w-sm">
+                  {mapSearchResults.slice(0, 6).map((item) => {
+                    const isZone = "location" in item;
+                    const poi = item as POI;
+                    const zone = item as Zone;
+
+                    return (
+                      <button
+                        key={`search-${item.id}`}
+                        onClick={() => handleSearchResultClick(item)}
+                        className="w-full flex items-center gap-2 p-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="flex-shrink-0">
+                          {isZone ? (
+                            <MapPin className="h-4 w-4 text-blue-600" />
+                          ) : (
+                            <span className="text-base">
+                              {POI_CATEGORIES[poi.category]?.icon}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 truncate text-sm">
+                            {item.name}
+                          </div>
+                          <div className="text-xs text-gray-500 truncate">
+                            {isZone
+                              ? zone.location
+                              : poi.description ||
+                                POI_CATEGORIES[poi.category]?.name}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px]">
+                            {isZone
+                              ? "Zone"
+                              : POI_CATEGORIES[poi.category]?.name.split(
+                                  " "
+                                )[0]}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {mapSearchResults.length > 6 && (
+                    <div className="p-2 text-center text-xs text-gray-500 bg-gray-50">
+                      +{mapSearchResults.length - 6} more results
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* No results message */}
+              {showMapSearch &&
+                mapSearchTerm &&
+                mapSearchResults.length === 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl p-3 text-center text-gray-500 z-20 min-w-[280px] max-w-sm">
+                    <Search className="h-6 w-6 mx-auto mb-1 text-gray-300" />
+                    <p className="text-xs">No results found</p>
+                  </div>
+                )}
             </div>
-          )}
+
+            {/* Zone Legend */}
+            <div className="relative">
+              <button
+                onClick={() => setIsLegendOpen(!isLegendOpen)}
+                className="bg-white rounded-lg shadow-lg px-2 py-2 sm:px-3 flex items-center gap-1 sm:gap-2 hover:bg-gray-50 transition-colors"
+              >
+                <MapIcon className="h-4 w-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700 hidden md:inline">
+                  Zones
+                </span>
+                {isLegendOpen ? (
+                  <ChevronUp className="h-4 w-4 text-gray-600" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-gray-600" />
+                )}
+              </button>
+
+              {/* Legend Dropdown */}
+              {isLegendOpen && (
+                <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-[60vh] overflow-y-auto min-w-[240px] z-20">
+                  <div className="p-3">
+                    <h4 className="font-semibold mb-3 text-gray-700">
+                      Click to navigate to zone
+                    </h4>
+                    <div className="space-y-1">
+                      {zonesWithDistance.map((zone) => (
+                        <button
+                          key={zone.id}
+                          onClick={() => handleLegendZoneClick(zone)}
+                          className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 transition-colors text-left"
+                        >
+                          <div
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: getZoneColor(zone.id) }}
+                          ></div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">
+                              {zone.name
+                                .replace(" Zone", "")
+                                .replace(" - CMZ", "")}
+                            </div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {zone.location}
+                            </div>
+                            {zone.distance && (
+                              <div className="text-xs text-gray-400">
+                                {zone.distance.toFixed(1)} km away
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -463,42 +673,47 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
             key={poi.id}
             position={poi.coordinates}
             icon={createPOIIcon(poi)}
+            ref={(ref) => {
+              if (ref) {
+                markersRef.current[poi.id] = ref;
+              }
+            }}
           >
             <Popup>
-              <div className="text-center min-w-[200px]">
+              <div className="text-center max-w-[280px]">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <span className="text-lg">
                     {POI_CATEGORIES[poi.category].icon}
                   </span>
-                  <h3 className="font-bold text-lg">{poi.name}</h3>
+                  <h3 className="font-bold text-base">{poi.name}</h3>
                 </div>
                 <div className="text-xs text-gray-500 mb-2">
                   {POI_CATEGORIES[poi.category].name}
                 </div>
                 {poi.description && (
-                  <p className="text-sm text-gray-600 mb-2">
+                  <p className="text-xs text-gray-600 mb-2">
                     {poi.description}
                   </p>
                 )}
                 {poi.hours && (
-                  <p className="text-sm text-gray-600 mb-2">
+                  <p className="text-xs text-gray-600 mb-2">
                     <strong>Hours:</strong> {poi.hours}
                   </p>
                 )}
                 {poi.phone && (
-                  <p className="text-sm text-gray-600 mb-3">
+                  <p className="text-xs text-gray-600 mb-2">
                     <strong>Phone:</strong> {poi.phone}
                   </p>
                 )}
 
                 {poi.category === "hospital" && poi.coordinators ? (
                   // Hospital - Show coordinator info button
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <button
                       onClick={() => handleHospitalClick(poi)}
-                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors"
+                      className="w-full bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs hover:bg-blue-700 transition-colors"
                     >
-                      👥 View Coordinators & Info
+                      👥 Coordinators & Info
                     </button>
                     <button
                       onClick={() => {
@@ -507,12 +722,12 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
                           `https://www.google.com/maps/search/?api=1&query=${poi.coordinates[0]},${poi.coordinates[1]}`;
                         window.open(url, "_blank", "noopener,noreferrer");
                       }}
-                      className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
+                      className="w-full text-white px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-colors"
                       style={{
                         backgroundColor: POI_CATEGORIES[poi.category].color,
                       }}
                     >
-                      🧭 Navigate with Google Maps
+                      🧭 Navigate
                     </button>
                   </div>
                 ) : (
@@ -524,12 +739,12 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
                         `https://www.google.com/maps/search/?api=1&query=${poi.coordinates[0]},${poi.coordinates[1]}`;
                       window.open(url, "_blank", "noopener,noreferrer");
                     }}
-                    className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
+                    className="w-full text-white px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-colors"
                     style={{
                       backgroundColor: POI_CATEGORIES[poi.category].color,
                     }}
                   >
-                    🧭 Navigate to {poi.name}
+                    🧭 Navigate
                   </button>
                 )}
               </div>
@@ -552,41 +767,48 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
               }}
             >
               <Popup>
-                <div className="text-center min-w-[200px]">
-                  <h3 className="font-bold text-lg mb-2">{zone.name}</h3>
-                  <p className="text-sm text-gray-600 mb-2">{zone.location}</p>
+                <div className="text-center max-w-[280px]">
+                  <h3 className="font-bold text-base mb-1">{zone.name}</h3>
+                  <p className="text-xs text-gray-600 mb-2">{zone.location}</p>
                   {zone.distance && (
-                    <p className="text-sm font-medium mb-3" style={{ color }}>
+                    <p className="text-xs font-medium mb-2" style={{ color }}>
                       {zone.distance.toFixed(1)} km away
                     </p>
                   )}
 
                   {/* POIs in this zone */}
                   {zone.pois && zone.pois.length > 0 && (
-                    <div className="mb-3">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                        Points of Interest:
+                    <div className="mb-2">
+                      <h4 className="text-xs font-semibold text-gray-700 mb-1">
+                        Services:
                       </h4>
-                      <div className="space-y-1">
-                        {zone.pois.map((poi) => (
+                      <div className="space-y-0.5">
+                        {zone.pois.slice(0, 3).map((poi) => (
                           <div
                             key={poi.id}
-                            className="flex items-center gap-2 text-xs text-gray-600"
+                            className="flex items-center gap-1 text-xs text-gray-600"
                           >
-                            <span>{POI_CATEGORIES[poi.category].icon}</span>
-                            <span>{poi.name}</span>
+                            <span className="text-xs">
+                              {POI_CATEGORIES[poi.category].icon}
+                            </span>
+                            <span className="truncate">{poi.name}</span>
                           </div>
                         ))}
+                        {zone.pois.length > 3 && (
+                          <div className="text-xs text-gray-500">
+                            +{zone.pois.length - 3} more
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
 
                   <button
                     onClick={() => onZoneClick(zone)}
-                    className="w-full text-white px-4 py-2 rounded-md text-sm hover:opacity-90 transition-colors"
+                    className="w-full text-white px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-colors"
                     style={{ backgroundColor: color }}
                   >
-                    🧭 Navigate with Google Maps
+                    🧭 Navigate
                   </button>
                 </div>
               </Popup>
@@ -595,19 +817,63 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
         })}
       </MapContainer>
 
-      {/* Center on Location Button */}
-      {userLocation && !isHospitalDrawerOpen && (
+      {/* Persistent Location Button */}
+      {!isHospitalDrawerOpen && (
         <button
           onClick={() => {
-            if (mapRef.current) {
+            if (userLocation && mapRef.current) {
+              // If location is available, center on it
               mapRef.current.setView(userLocation, 15, { animate: true });
+            } else {
+              // If no location, request permission
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                  (position) => {
+                    const coords: [number, number] = [
+                      position.coords.latitude,
+                      position.coords.longitude,
+                    ];
+                    if (mapRef.current) {
+                      mapRef.current.setView(coords, 15, { animate: true });
+                    }
+                  },
+                  (error) => {
+                    alert(
+                      "Location access denied or unavailable. Please enable location in your browser settings."
+                    );
+                  },
+                  {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000,
+                  }
+                );
+              } else {
+                alert("Geolocation is not supported by this browser.");
+              }
             }
           }}
-          className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-50 transition-colors border border-gray-200"
-          title="Center on my location"
+          className={`absolute bottom-6 right-6 z-[1000] rounded-full shadow-lg p-3 transition-colors border ${
+            userLocation
+              ? "bg-blue-600 hover:bg-blue-700 border-blue-600 text-white"
+              : "bg-white hover:bg-gray-50 border-gray-200 text-gray-400"
+          }`}
+          title={userLocation ? "Center on my location" : "Enable location"}
         >
-          <Crosshair className="h-5 w-5 text-blue-600" />
+          <Crosshair className="h-5 w-5" />
         </button>
+      )}
+
+      {/* Overlay to close dropdowns */}
+      {(showMapSearch || isFilterOpen || isLegendOpen) && (
+        <div
+          className="fixed inset-0 z-[15]"
+          onClick={() => {
+            setShowMapSearch(false);
+            setIsFilterOpen(false);
+            setIsLegendOpen(false);
+          }}
+        />
       )}
 
       {/* Custom CSS for markers */}
@@ -619,6 +885,22 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
         .custom-poi-marker {
           background: none !important;
           border: none !important;
+        }
+
+        @keyframes bounce {
+          0%,
+          20%,
+          50%,
+          80%,
+          100% {
+            transform: translateY(0);
+          }
+          40% {
+            transform: translateY(-10px);
+          }
+          60% {
+            transform: translateY(-5px);
+          }
         }
       `}</style>
 

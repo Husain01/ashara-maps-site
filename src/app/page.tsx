@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Zone } from "@/data/zones";
+import { Zone, POI } from "@/data/zones";
 import ZoneList from "@/components/ZoneList";
+import POIList from "@/components/POIList";
 import {
   Map as MapIcon,
   List,
@@ -47,6 +48,8 @@ export default function HomePage() {
     useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [isLocationBannerDismissed, setIsLocationBannerDismissed] =
+    useState(false);
 
   useEffect(() => {
     // Check if we're offline
@@ -169,6 +172,20 @@ export default function HomePage() {
     window.open(zone.googleMapsUrl, "_blank", "noopener,noreferrer");
   };
 
+  const handlePOIClick = (poi: POI | Zone, type: "poi" | "zone") => {
+    if (type === "zone" || "googleMapsUrl" in poi) {
+      // For zones or POIs with googleMapsUrl, open Google Maps
+      const url =
+        poi.googleMapsUrl ||
+        `https://www.google.com/maps/search/?api=1&query=${poi.coordinates[0]},${poi.coordinates[1]}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      // For POIs without specific Google Maps URL, use coordinates
+      const url = `https://www.google.com/maps/search/?api=1&query=${poi.coordinates[0]},${poi.coordinates[1]}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   const toggleView = () => {
     setIsMapView(!isMapView);
   };
@@ -276,33 +293,43 @@ export default function HomePage() {
       </header>
 
       {/* Location Permission Banner */}
-      {!locationPermissionAsked && !userLocation && (
-        <div className="bg-yellow-50 border-b border-yellow-200 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 flex-1">
-              <MapPin className="h-5 w-5 text-yellow-600" />
-              <p className="text-sm text-yellow-800">
-                <strong>Enable location</strong> to see distances and get the
-                best route to zones.
-              </p>
+      {!locationPermissionAsked &&
+        !userLocation &&
+        !isLocationBannerDismissed && (
+          <div className="bg-yellow-50 border-b border-yellow-200 p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 flex-1">
+                <MapPin className="h-4 w-4 text-yellow-600" />
+                <p className="text-sm text-yellow-800">
+                  <strong>Enable location</strong> for distances & directions
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={requestLocation}
+                  disabled={isLoadingLocation}
+                  className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-400 text-white px-3 py-1.5 rounded-md text-sm transition-colors flex items-center gap-1"
+                >
+                  {isLoadingLocation ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                      <span className="hidden sm:inline">Getting...</span>
+                    </>
+                  ) : (
+                    "Enable"
+                  )}
+                </button>
+                <button
+                  onClick={() => setIsLocationBannerDismissed(true)}
+                  className="text-yellow-600 hover:text-yellow-800 transition-colors p-1"
+                  title="Dismiss"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-            <button
-              onClick={requestLocation}
-              disabled={isLoadingLocation}
-              className="ml-4 bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-400 text-white px-4 py-2 rounded-md text-sm transition-colors flex items-center gap-1"
-            >
-              {isLoadingLocation ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Getting...
-                </>
-              ) : (
-                "Enable"
-              )}
-            </button>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Location Error Banner */}
       {locationError && (
@@ -343,8 +370,9 @@ export default function HomePage() {
           {isMapView ? (
             <Map userLocation={userLocation} onZoneClick={handleZoneClick} />
           ) : (
-            <ZoneList
+            <POIList
               userLocation={userLocation}
+              onPOIClick={handlePOIClick}
               onZoneClick={handleZoneClick}
             />
           )}
@@ -355,7 +383,9 @@ export default function HomePage() {
       <footer className="bg-gray-50 border-t p-3">
         <div className="text-center">
           <p className="text-xs text-gray-600">
-            Tap any zone to open navigation in Google Maps
+            {isMapView
+              ? "Search on map or tap markers to navigate • Use POI filter to show/hide categories"
+              : "Search, filter and sort all locations • Tap any item to navigate"}
           </p>
           {isOffline ? (
             <p className="text-xs text-orange-600 mt-1">
