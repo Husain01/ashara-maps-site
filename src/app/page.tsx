@@ -367,7 +367,11 @@ export default function HomePage() {
         )}
         <div className="h-full transition-all duration-300 ease-in-out">
           {isMapView ? (
-            <Map userLocation={userLocation} onZoneClick={handleZoneClick} />
+            <Map
+              userLocation={userLocation}
+              onZoneClick={handleZoneClick}
+              onLocationRequest={requestLocation}
+            />
           ) : (
             <POIList
               userLocation={userLocation}
