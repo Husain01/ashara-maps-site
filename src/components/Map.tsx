@@ -40,6 +40,7 @@ L.Icon.Default.mergeOptions({
 interface MapProps {
   userLocation?: [number, number];
   onZoneClick: (zone: Zone) => void;
+  onLocationRequest: () => void;
 }
 
 interface ZoneWithDistance extends Zone {
@@ -140,7 +141,11 @@ function getZoneColor(zoneId: string): string {
   return zoneColors[zoneId] || "#6B7280"; // Default gray if zone not found
 }
 
-export default function Map({ userLocation, onZoneClick }: MapProps) {
+export default function Map({
+  userLocation,
+  onZoneClick,
+  onLocationRequest,
+}: MapProps) {
   const [zonesWithDistance, setZonesWithDistance] =
     useState<ZoneWithDistance[]>(zones);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
@@ -825,32 +830,8 @@ export default function Map({ userLocation, onZoneClick }: MapProps) {
               // If location is available, center on it
               mapRef.current.setView(userLocation, 15, { animate: true });
             } else {
-              // If no location, request permission
-              if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                  (position) => {
-                    const coords: [number, number] = [
-                      position.coords.latitude,
-                      position.coords.longitude,
-                    ];
-                    if (mapRef.current) {
-                      mapRef.current.setView(coords, 15, { animate: true });
-                    }
-                  },
-                  () => {
-                    alert(
-                      "Location access denied or unavailable. Please enable location in your browser settings."
-                    );
-                  },
-                  {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 300000,
-                  }
-                );
-              } else {
-                alert("Geolocation is not supported by this browser.");
-              }
+              // If no location, request it from parent component
+              onLocationRequest();
             }
           }}
           className={`absolute bottom-6 right-6 z-[1000] rounded-full shadow-lg p-3 transition-colors border ${
