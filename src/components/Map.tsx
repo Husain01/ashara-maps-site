@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useEffect, useState, useRef, useMemo } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+  ZoomControl,
+} from "react-leaflet";
 import L from "leaflet";
 import {
   zones,
@@ -17,7 +24,6 @@ import {
   Map as MapIcon,
   Crosshair,
   Navigation,
-  Filter,
   X,
   Search,
   MapPin,
@@ -168,15 +174,15 @@ export default function Map({
   const [zonesWithDistance, setZonesWithDistance] =
     useState<ZoneWithDistance[]>(zones);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedPOICategories, setSelectedPOICategories] = useState<
-    Set<POI["category"]>
-  >(new Set(["khaas"]));
+  const [selectedPOICategory, setSelectedPOICategory] = useState<
+    POI["category"] | "all" | null
+  >(null);
   const [selectedHospital, setSelectedHospital] = useState<POI | null>(null);
   const [isHospitalDrawerOpen, setIsHospitalDrawerOpen] = useState(false);
   const [mapSearchTerm, setMapSearchTerm] = useState("");
   const [mapSearchResults, setMapSearchResults] = useState<(POI | Zone)[]>([]);
   const [showMapSearch, setShowMapSearch] = useState(false);
+  const [showZoneMarkers, setShowZoneMarkers] = useState(true);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
 
@@ -227,17 +233,9 @@ export default function Map({
     markersRef.current[zoneId] = marker;
   };
 
-  // Handle POI category filter toggle
-  const togglePOICategory = (category: POI["category"]) => {
-    setSelectedPOICategories((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(category)) {
-        newSet.delete(category);
-      } else {
-        newSet.add(category);
-      }
-      return newSet;
-    });
+  // Handle POI category selection
+  const selectPOICategory = (category: POI["category"] | "all" | null) => {
+    setSelectedPOICategory(category);
   };
 
   // Handle hospital click - open drawer
@@ -248,10 +246,14 @@ export default function Map({
 
   // Get filtered POIs to display
   const getFilteredPOIs = (): POI[] => {
-    if (selectedPOICategories.size === 0) return [];
-    return getAllPOIs().filter((poi) =>
-      selectedPOICategories.has(poi.category)
-    );
+    const allPOIs = getAllPOIs();
+    if (selectedPOICategory === null) {
+      return []; // Show no POIs when no filter is selected
+    }
+    if (selectedPOICategory === "all") {
+      return allPOIs;
+    }
+    return allPOIs.filter((poi) => poi.category === selectedPOICategory);
   };
 
   // Map search functionality
@@ -312,9 +314,12 @@ export default function Map({
         // For POIs, ensure the category is enabled in the filter
         const poi = item as POI;
 
-        // Auto-enable the POI category if it's not already enabled
-        if (!selectedPOICategories.has(poi.category)) {
-          setSelectedPOICategories((prev) => new Set([...prev, poi.category]));
+        // Auto-select the POI category if it's not already selected
+        if (
+          selectedPOICategory !== poi.category &&
+          selectedPOICategory !== "all"
+        ) {
+          setSelectedPOICategory(poi.category);
         }
 
         // Try to find and open the POI marker
@@ -482,75 +487,32 @@ export default function Map({
   const defaultCenter: [number, number] = [13.0827, 80.2707];
   const mapCenter = userLocation || defaultCenter;
 
+  // Get filtered POIs for rendering
+  const filteredPOIs = useMemo(() => {
+    return getFilteredPOIs();
+  }, [selectedPOICategory, getFilteredPOIs]);
+
   return (
     <div className="h-full w-full relative">
       {/* Top Control Bar */}
       {!isHospitalDrawerOpen && (
         <div className="absolute top-3 left-3 right-3 z-[1000]">
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* POI Filter */}
-            <div className="relative">
-              <button
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="bg-white rounded-lg shadow-sm px-3 py-2 flex items-center gap-2 hover:bg-gray-50 transition-colors border border-gray-200"
-              >
-                <Filter className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700 hidden md:inline">
-                  POIs
-                </span>
-                {selectedPOICategories.size > 0 && (
-                  <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
-                    {selectedPOICategories.size}
-                  </span>
-                )}
-              </button>
-
-              {/* POI Filter Dropdown */}
-              {isFilterOpen && (
-                <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-[220px] z-20">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-gray-700">Filter POIs</h4>
-                    <button
-                      onClick={() => setIsFilterOpen(false)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {Object.entries(POI_CATEGORIES).map(([key, category]) => (
-                      <label
-                        key={key}
-                        className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedPOICategories.has(
-                            key as POI["category"]
-                          )}
-                          onChange={() =>
-                            togglePOICategory(key as POI["category"])
-                          }
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-lg">{category.icon}</span>
-                        <span className="text-sm text-gray-700">
-                          {category.name}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  {selectedPOICategories.size > 0 && (
-                    <button
-                      onClick={() => setSelectedPOICategories(new Set())}
-                      className="mt-3 w-full text-xs text-gray-500 hover:text-gray-700 underline"
-                    >
-                      Clear all filters
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+          {/* Main Controls Row */}
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            {/* Zone Toggle */}
+            <button
+              onClick={() => setShowZoneMarkers(!showZoneMarkers)}
+              className={`rounded-lg shadow-sm px-3 py-2 flex items-center gap-2 transition-colors border ${
+                showZoneMarkers
+                  ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              <MapPin className="h-4 w-4" />
+              <span className="text-sm font-medium hidden md:inline">
+                Zones
+              </span>
+            </button>
 
             {/* Search Bar - Central */}
             <div className="flex-1 relative min-w-0 max-w-sm mx-auto">
@@ -651,7 +613,7 @@ export default function Map({
               >
                 <MapIcon className="h-4 w-4 text-gray-600" />
                 <span className="text-sm font-medium text-gray-700 hidden md:inline">
-                  Zones
+                  List
                 </span>
                 {isLegendOpen ? (
                   <ChevronUp className="h-4 w-4 text-gray-600" />
@@ -672,26 +634,24 @@ export default function Map({
                         <button
                           key={zone.id}
                           onClick={() => handleLegendZoneClick(zone)}
-                          className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 transition-colors text-left"
+                          className="w-full flex items-center gap-2 p-2 hover:bg-gray-50 rounded-md transition-colors text-left"
                         >
                           <div
-                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            className="w-3 h-3 rounded-full border-2 border-white shadow-sm"
                             style={{ backgroundColor: getZoneColor(zone.id) }}
-                          ></div>
+                          />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900 truncate">
-                              {zone.name
-                                .replace(" Zone", "")
-                                .replace(" - CMZ", "")}
+                            <div className="font-medium text-gray-900 truncate text-sm">
+                              {zone.name}
                             </div>
                             <div className="text-xs text-gray-500 truncate">
                               {zone.location}
+                              {zone.distance && (
+                                <span className="ml-1">
+                                  • {zone.distance.toFixed(1)} km
+                                </span>
+                              )}
                             </div>
-                            {zone.distance && (
-                              <div className="text-xs text-gray-400">
-                                {zone.distance.toFixed(1)} km away
-                              </div>
-                            )}
                           </div>
                         </button>
                       ))}
@@ -701,26 +661,97 @@ export default function Map({
               )}
             </div>
           </div>
+
+          {/* Filter Pills Row */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 p-2">
+            <div className="pills-container">
+              {/* All POIs pill */}
+              <button
+                onClick={() => selectPOICategory("all")}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
+                  selectedPOICategory === "all"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                All POIs
+              </button>
+
+              {/* Individual category pills with full proper names */}
+              <button
+                onClick={() => selectPOICategory("medical")}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 flex-shrink-0 ${
+                  selectedPOICategory === "medical"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {renderPOIIcon("medical", 14)}
+                <span>Mahal us Shifa - Aam</span>
+              </button>
+
+              <button
+                onClick={() => selectPOICategory("khaas")}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 flex-shrink-0 ${
+                  selectedPOICategory === "khaas"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {renderPOIIcon("khaas", 14)}
+                <span>Mahal us Shifa - Khaas</span>
+              </button>
+
+              <button
+                onClick={() => selectPOICategory("hospital")}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 flex-shrink-0 ${
+                  selectedPOICategory === "hospital"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {renderPOIIcon("hospital", 14)}
+                <span>Hospitals</span>
+              </button>
+
+              <button
+                onClick={() => selectPOICategory("pharmacy")}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 flex-shrink-0 ${
+                  selectedPOICategory === "pharmacy"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {renderPOIIcon("pharmacy", 14)}
+                <span>Pharmacies</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       <MapContainer
         center={mapCenter}
-        zoom={userLocation ? 12 : 11}
-        style={{ height: "100%", width: "100%" }}
-        className="z-0"
+        zoom={13}
+        className="h-full w-full"
+        zoomControl={false}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <MapReady onMapReady={handleMapReady} />
-
+        {/* User Location Marker */}
         {userLocation && <LocationMarker userLocation={userLocation} />}
 
+        {/* Map Ready Handler */}
+        <MapReady onMapReady={handleMapReady} />
+
+        {/* Custom positioned zoom control */}
+        <ZoomControl position="bottomleft" />
+
         {/* POI Markers */}
-        {getFilteredPOIs().map((poi) => (
+        {filteredPOIs.map((poi) => (
           <Marker
             key={poi.id}
             position={poi.coordinates}
@@ -805,70 +836,74 @@ export default function Map({
           </Marker>
         ))}
 
-        {zonesWithDistance.map((zone) => {
-          const color = getZoneColor(zone.id);
+        {/* Zone Markers - Only show when toggled on */}
+        {showZoneMarkers &&
+          zonesWithDistance.map((zone) => {
+            const color = getZoneColor(zone.id);
 
-          return (
-            <Marker
-              key={zone.id}
-              position={zone.coordinates}
-              icon={createZoneIcon(zone)}
-              ref={(ref) => {
-                if (ref) {
-                  handleMarkerReady(ref, zone.id);
-                }
-              }}
-            >
-              <Popup>
-                <div className="text-center max-w-[280px]">
-                  <h3 className="font-bold text-base mb-1">{zone.name}</h3>
-                  <p className="text-xs text-gray-600 mb-2">{zone.location}</p>
-                  {zone.distance && (
-                    <p className="text-xs font-medium mb-2" style={{ color }}>
-                      {zone.distance.toFixed(1)} km away
+            return (
+              <Marker
+                key={zone.id}
+                position={zone.coordinates}
+                icon={createZoneIcon(zone)}
+                ref={(ref) => {
+                  if (ref) {
+                    handleMarkerReady(ref, zone.id);
+                  }
+                }}
+              >
+                <Popup>
+                  <div className="text-center max-w-[280px]">
+                    <h3 className="font-bold text-base mb-1">{zone.name}</h3>
+                    <p className="text-xs text-gray-600 mb-2">
+                      {zone.location}
                     </p>
-                  )}
+                    {zone.distance && (
+                      <p className="text-xs font-medium mb-2" style={{ color }}>
+                        {zone.distance.toFixed(1)} km away
+                      </p>
+                    )}
 
-                  {/* POIs in this zone */}
-                  {zone.pois && zone.pois.length > 0 && (
-                    <div className="mb-2">
-                      <h4 className="text-xs font-semibold text-gray-700 mb-1">
-                        Services:
-                      </h4>
-                      <div className="space-y-0.5">
-                        {zone.pois.slice(0, 3).map((poi) => (
-                          <div
-                            key={poi.id}
-                            className="flex items-center gap-1 text-xs text-gray-600"
-                          >
-                            <span className="flex items-center">
-                              {renderPOIIcon(poi.category, 12)}
-                            </span>
-                            <span className="truncate">{poi.name}</span>
-                          </div>
-                        ))}
-                        {zone.pois.length > 3 && (
-                          <div className="text-xs text-gray-500">
-                            +{zone.pois.length - 3} more
-                          </div>
-                        )}
+                    {/* POIs in this zone */}
+                    {zone.pois && zone.pois.length > 0 && (
+                      <div className="mb-2">
+                        <h4 className="text-xs font-semibold text-gray-700 mb-1">
+                          Services:
+                        </h4>
+                        <div className="space-y-0.5">
+                          {zone.pois.slice(0, 3).map((poi) => (
+                            <div
+                              key={poi.id}
+                              className="flex items-center gap-1 text-xs text-gray-600"
+                            >
+                              <span className="flex items-center">
+                                {renderPOIIcon(poi.category, 12)}
+                              </span>
+                              <span className="truncate">{poi.name}</span>
+                            </div>
+                          ))}
+                          {zone.pois.length > 3 && (
+                            <div className="text-xs text-gray-500">
+                              +{zone.pois.length - 3} more
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  <button
-                    onClick={() => onZoneClick(zone)}
-                    className="w-full text-white px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-colors flex items-center justify-center gap-1"
-                    style={{ backgroundColor: color }}
-                  >
-                    <Navigation size={12} />
-                    Navigate
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
+                    <button
+                      onClick={() => onZoneClick(zone)}
+                      className="w-full text-white px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-colors flex items-center justify-center gap-1"
+                      style={{ backgroundColor: color }}
+                    >
+                      <Navigation size={12} />
+                      Navigate to Zone
+                    </button>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
       </MapContainer>
 
       {/* Persistent Location Button */}
@@ -895,18 +930,17 @@ export default function Map({
       )}
 
       {/* Overlay to close dropdowns */}
-      {(showMapSearch || isFilterOpen || isLegendOpen) && (
+      {(showMapSearch || isLegendOpen) && (
         <div
           className="fixed inset-0 z-[15]"
           onClick={() => {
             setShowMapSearch(false);
-            setIsFilterOpen(false);
             setIsLegendOpen(false);
           }}
         />
       )}
 
-      {/* Custom CSS for markers */}
+      {/* Custom CSS */}
       <style jsx>{`
         .custom-zone-marker {
           background: none !important;
@@ -915,6 +949,31 @@ export default function Map({
         .custom-poi-marker {
           background: none !important;
           border: none !important;
+        }
+
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+          overflow-x: scroll;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+
+        /* Ensure pills container is properly scrollable */
+        .pills-container {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          overflow-x: scroll;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          padding-bottom: 4px;
+        }
+
+        .pills-container::-webkit-scrollbar {
+          display: none;
         }
 
         @keyframes bounce {
