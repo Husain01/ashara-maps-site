@@ -21,6 +21,11 @@ import {
   X,
   Search,
   MapPin,
+  Heart,
+  Stethoscope,
+  Building2,
+  Pill,
+  Users,
 } from "lucide-react";
 import HospitalDrawer from "./HospitalDrawer";
 import "leaflet/dist/leaflet.css";
@@ -63,20 +68,26 @@ function LocationMarker({ userLocation }: { userLocation: [number, number] }) {
       <div style="position: relative;">
         <!-- Pulsing circle -->
         <div style="
-          width: 32px;
-          height: 32px;
+          width: 24px;
+          height: 24px;
           background: rgba(59, 130, 246, 0.2);
           border-radius: 50%;
           position: absolute;
-          top: -4px;
-          left: -4px;
+          top: -2px;
+          left: -2px;
           animation: pulse 2s infinite;
         "></div>
         <!-- Main location dot -->
-        <svg width="24" height="24" viewBox="0 0 24 24" style="position: relative; z-index: 1;">
-          <circle cx="12" cy="12" r="8" fill="#3B82F6" stroke="white" stroke-width="3"/>
-          <circle cx="12" cy="12" r="4" fill="white"/>
-        </svg>
+        <div style="
+          width: 20px;
+          height: 20px;
+          background: #3B82F6;
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+          position: relative;
+          z-index: 1;
+        "></div>
       </div>
       <style>
         @keyframes pulse {
@@ -87,8 +98,8 @@ function LocationMarker({ userLocation }: { userLocation: [number, number] }) {
       </style>
     `,
     className: "user-location-marker",
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
   });
 
   return userLocation ? (
@@ -140,6 +151,14 @@ const zoneColors: { [key: string]: string } = {
 function getZoneColor(zoneId: string): string {
   return zoneColors[zoneId] || "#6B7280"; // Default gray if zone not found
 }
+
+// POI Icon mapping to Lucide React icons
+const POI_ICON_MAP = {
+  medical: { icon: Heart, color: "#dc2626" }, // Red
+  khaas: { icon: Stethoscope, color: "#7c3aed" }, // Purple
+  hospital: { icon: Building2, color: "#c2410c" }, // Orange-red
+  pharmacy: { icon: Pill, color: "#059669" }, // Green
+};
 
 export default function Map({
   userLocation,
@@ -339,46 +358,54 @@ export default function Map({
     setShowMapSearch(false);
   };
 
+  // Helper function to render POI icon component
+  const renderPOIIcon = (category: POI["category"], size = 16) => {
+    const iconConfig = POI_ICON_MAP[category];
+    const IconComponent = iconConfig.icon;
+    return <IconComponent size={size} style={{ color: iconConfig.color }} />;
+  };
+
   // Create POI marker icon
   const createPOIIcon = (poi: POI) => {
-    const category = POI_CATEGORIES[poi.category];
+    const iconConfig = POI_ICON_MAP[poi.category];
     const showLabel = poi.category === "khaas"; // Show labels for Khaas medical POIs
 
     return new L.DivIcon({
       html: `
         <div style="position: relative; text-align: center;">
           <div style="
-            background: ${category.color};
+            background: ${iconConfig.color};
             color: white;
-            border-radius: 50%;
+            border-radius: 6px;
             width: 32px;
             height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
-            border: 3px solid white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
           ">
-            ${category.icon}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              ${getIconSVGPath(poi.category)}
+            </svg>
           </div>
           ${
             showLabel
               ? `
             <div style="
               position: absolute;
-              top: 52px;
+              top: 36px;
               left: 50%;
               transform: translateX(-50%);
-              background: rgba(147, 51, 234, 0.95);
+              background: ${iconConfig.color};
               color: white;
-              padding: 1px 4px;
-              border-radius: 3px;
-              font-size: 8px;
-              font-weight: 500;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 9px;
+              font-weight: 600;
               white-space: nowrap;
               border: 1px solid rgba(255,255,255,0.3);
-              box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+              box-shadow: 0 1px 2px rgba(0,0,0,0.1);
             ">
               Mahal us Shifa Khaas
             </div>
@@ -388,9 +415,29 @@ export default function Map({
         </div>
       `,
       className: "custom-poi-marker",
-      iconSize: [32, showLabel ? 70 : 32], // Increased height for labeled markers
+      iconSize: [32, showLabel ? 56 : 32],
       iconAnchor: [16, 16],
     });
+  };
+
+  // Helper function to get SVG paths for different POI categories
+  const getIconSVGPath = (category: POI["category"]) => {
+    switch (category) {
+      case "medical":
+        // Heart icon
+        return `<path d="m19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/>`;
+      case "khaas":
+        // Stethoscope icon
+        return `<path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/>`;
+      case "hospital":
+        // Building2 icon
+        return `<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>`;
+      case "pharmacy":
+        // Pill icon
+        return `<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>`;
+      default:
+        return `<circle cx="12" cy="12" r="10"/>`;
+    }
   };
 
   // Create custom icons for zones with labels
@@ -445,14 +492,14 @@ export default function Map({
             <div className="relative">
               <button
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="bg-white rounded-lg shadow-lg px-2 py-2 sm:px-3 flex items-center gap-1 sm:gap-2 hover:bg-gray-50 transition-colors"
+                className="bg-white rounded-lg shadow-sm px-3 py-2 flex items-center gap-2 hover:bg-gray-50 transition-colors border border-gray-200"
               >
                 <Filter className="h-4 w-4 text-gray-600" />
                 <span className="text-sm font-medium text-gray-700 hidden md:inline">
                   POIs
                 </span>
                 {selectedPOICategories.size > 0 && (
-                  <span className="bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                  <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
                     {selectedPOICategories.size}
                   </span>
                 )}
@@ -460,7 +507,7 @@ export default function Map({
 
               {/* POI Filter Dropdown */}
               {isFilterOpen && (
-                <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-3 min-w-[220px] z-20">
+                <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-[220px] z-20">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-semibold text-gray-700">Filter POIs</h4>
                     <button
@@ -515,7 +562,7 @@ export default function Map({
                   value={mapSearchTerm}
                   onChange={(e) => handleMapSearch(e.target.value)}
                   onFocus={() => setShowMapSearch(true)}
-                  className="w-full pl-10 pr-10 py-2.5 bg-white rounded-lg shadow-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  className="w-full pl-10 pr-10 py-2 bg-white rounded-lg shadow-sm border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
                 {mapSearchTerm && (
                   <button
@@ -533,7 +580,7 @@ export default function Map({
 
               {/* Search Results Dropdown */}
               {showMapSearch && mapSearchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-72 overflow-y-auto z-20 min-w-[280px] max-w-sm">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto z-20 min-w-[280px] max-w-sm">
                   {mapSearchResults.slice(0, 6).map((item) => {
                     const isZone = "location" in item;
                     const poi = item as POI;
@@ -549,8 +596,8 @@ export default function Map({
                           {isZone ? (
                             <MapPin className="h-4 w-4 text-blue-600" />
                           ) : (
-                            <span className="text-base">
-                              {POI_CATEGORIES[poi.category]?.icon}
+                            <span className="flex items-center">
+                              {renderPOIIcon(poi.category, 16)}
                             </span>
                           )}
                         </div>
@@ -600,7 +647,7 @@ export default function Map({
             <div className="relative">
               <button
                 onClick={() => setIsLegendOpen(!isLegendOpen)}
-                className="bg-white rounded-lg shadow-lg px-2 py-2 sm:px-3 flex items-center gap-1 sm:gap-2 hover:bg-gray-50 transition-colors"
+                className="bg-white rounded-lg shadow-sm px-3 py-2 flex items-center gap-2 hover:bg-gray-50 transition-colors border border-gray-200"
               >
                 <MapIcon className="h-4 w-4 text-gray-600" />
                 <span className="text-sm font-medium text-gray-700 hidden md:inline">
@@ -615,7 +662,7 @@ export default function Map({
 
               {/* Legend Dropdown */}
               {isLegendOpen && (
-                <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-[60vh] overflow-y-auto min-w-[240px] z-20">
+                <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 max-h-[60vh] overflow-y-auto min-w-[240px] z-20">
                   <div className="p-3">
                     <h4 className="font-semibold mb-3 text-gray-700">
                       Click to navigate to zone
@@ -687,9 +734,7 @@ export default function Map({
             <Popup>
               <div className="text-center max-w-[280px]">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-lg">
-                    {POI_CATEGORIES[poi.category].icon}
-                  </span>
+                  {renderPOIIcon(poi.category, 18)}
                   <h3 className="font-bold text-base">{poi.name}</h3>
                 </div>
                 <div className="text-xs text-gray-500 mb-2">
@@ -716,9 +761,10 @@ export default function Map({
                   <div className="space-y-1.5">
                     <button
                       onClick={() => handleHospitalClick(poi)}
-                      className="w-full bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs hover:bg-blue-700 transition-colors"
+                      className="w-full bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
                     >
-                      👥 Coordinators & Info
+                      <Users size={12} />
+                      Coordinators & Info
                     </button>
                     <button
                       onClick={() => {
@@ -727,12 +773,13 @@ export default function Map({
                           `https://www.google.com/maps/search/?api=1&query=${poi.coordinates[0]},${poi.coordinates[1]}`;
                         window.open(url, "_blank", "noopener,noreferrer");
                       }}
-                      className="w-full text-white px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-colors"
+                      className="w-full text-white px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-colors flex items-center justify-center gap-1"
                       style={{
-                        backgroundColor: POI_CATEGORIES[poi.category].color,
+                        backgroundColor: POI_ICON_MAP[poi.category].color,
                       }}
                     >
-                      🧭 Navigate
+                      <Navigation size={12} />
+                      Navigate
                     </button>
                   </div>
                 ) : (
@@ -744,12 +791,13 @@ export default function Map({
                         `https://www.google.com/maps/search/?api=1&query=${poi.coordinates[0]},${poi.coordinates[1]}`;
                       window.open(url, "_blank", "noopener,noreferrer");
                     }}
-                    className="w-full text-white px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-colors"
+                    className="w-full text-white px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-colors flex items-center justify-center gap-1"
                     style={{
-                      backgroundColor: POI_CATEGORIES[poi.category].color,
+                      backgroundColor: POI_ICON_MAP[poi.category].color,
                     }}
                   >
-                    🧭 Navigate
+                    <Navigation size={12} />
+                    Navigate
                   </button>
                 )}
               </div>
@@ -793,8 +841,8 @@ export default function Map({
                             key={poi.id}
                             className="flex items-center gap-1 text-xs text-gray-600"
                           >
-                            <span className="text-xs">
-                              {POI_CATEGORIES[poi.category].icon}
+                            <span className="flex items-center">
+                              {renderPOIIcon(poi.category, 12)}
                             </span>
                             <span className="truncate">{poi.name}</span>
                           </div>
@@ -810,10 +858,11 @@ export default function Map({
 
                   <button
                     onClick={() => onZoneClick(zone)}
-                    className="w-full text-white px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-colors"
+                    className="w-full text-white px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-colors flex items-center justify-center gap-1"
                     style={{ backgroundColor: color }}
                   >
-                    🧭 Navigate
+                    <Navigation size={12} />
+                    Navigate
                   </button>
                 </div>
               </Popup>

@@ -14,6 +14,10 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
+  Heart,
+  Stethoscope,
+  Building2,
+  Pill,
 } from "lucide-react";
 
 interface POIWithDistance extends POI {
@@ -38,6 +42,14 @@ type FilterType =
   | "khaas"
   | "hospital"
   | "pharmacy";
+
+// POI Icon mapping to Lucide React icons (same as Map component)
+const POI_ICON_MAP = {
+  medical: { icon: Heart, color: "#dc2626" }, // Red
+  khaas: { icon: Stethoscope, color: "#7c3aed" }, // Purple
+  hospital: { icon: Building2, color: "#c2410c" }, // Orange-red
+  pharmacy: { icon: Pill, color: "#059669" }, // Green
+};
 
 export default function POIList({
   userLocation,
@@ -157,46 +169,73 @@ export default function POIList({
   const filterOptions: {
     key: FilterType;
     label: string;
-    icon: string;
+    icon: React.ReactElement;
     count: number;
   }[] = [
     {
       key: "all",
       label: "All",
-      icon: "🏠",
+      icon: <MapPin className="h-4 w-4 text-gray-600" />,
       count: poisWithDistance.length + zonesWithDistance.length,
     },
     {
       key: "zones",
       label: "Zones",
-      icon: "📍",
+      icon: <MapPin className="h-4 w-4 text-blue-600" />,
       count: zonesWithDistance.length,
     },
     {
       key: "medical",
       label: "Medical (Aam)",
-      icon: "🏥",
+      icon: (
+        <Heart
+          className="h-4 w-4"
+          style={{ color: POI_ICON_MAP.medical.color }}
+        />
+      ),
       count: poisWithDistance.filter((p) => p.category === "medical").length,
     },
     {
       key: "khaas",
       label: "Medical (Khaas)",
-      icon: "🏨",
+      icon: (
+        <Stethoscope
+          className="h-4 w-4"
+          style={{ color: POI_ICON_MAP.khaas.color }}
+        />
+      ),
       count: poisWithDistance.filter((p) => p.category === "khaas").length,
     },
     {
       key: "hospital",
       label: "Hospitals",
-      icon: "🏥",
+      icon: (
+        <Building2
+          className="h-4 w-4"
+          style={{ color: POI_ICON_MAP.hospital.color }}
+        />
+      ),
       count: poisWithDistance.filter((p) => p.category === "hospital").length,
     },
     {
       key: "pharmacy",
       label: "Pharmacies",
-      icon: "💊",
+      icon: (
+        <Pill
+          className="h-4 w-4"
+          style={{ color: POI_ICON_MAP.pharmacy.color }}
+        />
+      ),
       count: poisWithDistance.filter((p) => p.category === "pharmacy").length,
     },
   ];
+
+  // Helper function to render POI icon component
+  const renderPOIIcon = (category: POI["category"], size = 16) => {
+    const iconConfig = POI_ICON_MAP[category];
+    const IconComponent = iconConfig.icon;
+    return <IconComponent size={size} style={{ color: iconConfig.color }} />;
+  };
 
   const handleItemClick = (item: POIWithDistance | ZoneWithDistance) => {
     if ("location" in item) {
@@ -213,9 +252,7 @@ export default function POIList({
       return <MapPin className="h-4 w-4 text-blue-600" />;
     } else {
       const poi = item as POIWithDistance;
-      return (
-        <span className="text-sm">{POI_CATEGORIES[poi.category].icon}</span>
-      );
+      return renderPOIIcon(poi.category, 16);
     }
   };
 
@@ -293,7 +330,7 @@ export default function POIList({
                           : "text-gray-700"
                       }`}
                     >
-                      <span className="text-lg">{option.icon}</span>
+                      <span className="flex items-center">{option.icon}</span>
                       <span className="flex-1 text-sm font-medium">
                         {option.label}
                       </span>
@@ -368,7 +405,7 @@ export default function POIList({
                     e.stopPropagation();
                     handleItemClick(item);
                   }}
-                  className="ml-4 bg-blue-600 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors whitespace-nowrap flex items-center gap-1"
+                  className="ml-4 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap flex items-center gap-1.5"
                 >
                   <Navigation className="h-4 w-4" />
                   Go
@@ -390,10 +427,9 @@ export default function POIList({
       </div>
 
       {/* Footer Info */}
-      <div className="p-4 bg-gray-50 border-t">
-        <p className="text-xs text-gray-600 text-center">
-          {filteredData.length} result{filteredData.length !== 1 ? "s" : ""}{" "}
-          found
+      <div className="px-4 py-2 bg-white border-t">
+        <p className="text-xs text-gray-500 text-center">
+          {filteredData.length} result{filteredData.length !== 1 ? "s" : ""}
           {userLocation && ` • Sorted by ${sortBy}`}
         </p>
       </div>
