@@ -33,17 +33,17 @@ export const POI_CATEGORIES = {
   medical: {
     name: "Mahal us Shifa Aam (Emergency)",
     icon: "🏥",
-    color: "#ef4444",
+    color: "#dc2626",
   },
   khaas: {
     name: "Mahal us Shifa Khaas (Consultation)",
     icon: "🏨",
-    color: "#9333ea",
+    color: "#7c3aed",
   },
   hospital: {
     name: "Hospitals",
     icon: "🏥",
-    color: "#dc2626",
+    color: "#c2410c",
   },
   pharmacy: {
     name: "Pharmacies",

@@ -105,7 +105,11 @@ export default function HospitalDrawer({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="h-[80vh] overflow-y-auto p-6">
+      <SheetContent
+        side="bottom"
+        className="h-[80vh] overflow-y-auto p-6"
+        style={{ zIndex: 1200 }}
+      >
         <SheetHeader className="text-left pb-4">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-red-100 rounded-lg">

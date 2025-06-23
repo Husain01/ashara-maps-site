@@ -273,7 +273,7 @@ export default function HomePage() {
 
             <button
               onClick={toggleView}
-              className="bg-blue-700 hover:bg-blue-800 px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-1"
+              className="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm border border-blue-200"
             >
               {isMapView ? (
                 <>
@@ -383,36 +383,13 @@ export default function HomePage() {
       </main>
 
       {/* Bottom Info */}
-      <footer className="bg-gray-50 border-t p-3">
+      <footer className="bg-white border-t px-4 py-2">
         <div className="text-center">
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-gray-500">
             {isMapView
-              ? "Search on map or tap markers to navigate • Use POI filter to show/hide categories"
-              : "Search, filter and sort all locations • Tap any item to navigate"}
+              ? "Tap markers to navigate • Use filter to show/hide POIs"
+              : "Tap items to navigate • Use search and filters"}
           </p>
-          {isOffline ? (
-            <p className="text-xs text-orange-600 mt-1">
-              Running offline • Map tiles may be limited
-            </p>
-          ) : isAppInstalled ? (
-            <p className="text-xs text-green-600 mt-1">
-              ✓ App installed • Full offline functionality available
-            </p>
-          ) : deferredPrompt ? (
-            <p className="text-xs text-blue-600 mt-1">
-              💡 Install this app for offline access •
-              <button
-                onClick={handleInstallClick}
-                className="underline hover:text-blue-800 ml-1"
-              >
-                Install now
-              </button>
-            </p>
-          ) : (
-            <p className="text-xs text-green-600 mt-1">
-              ✓ App ready for offline use
-            </p>
-          )}
         </div>
       </footer>
     </div>
